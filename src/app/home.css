@@ -2298,6 +2298,13 @@
   }
 }
 
+/* On mobile the back button floats over the card, so keep the heading below it. */
+@media (max-width: 820px) {
+  .login-card {
+    padding-top: 76px;
+  }
+}
+
 /* Final navbar scroll positioning. */
 
 @media (max-width: 760px) {
@@ -2356,6 +2363,20 @@
 @media (max-width: 760px) {
   .public-content-page .simple-public-page {
     padding-top: 145px;
+  }
+
+  .contact-card {
+    grid-template-columns: 1fr;
+    margin-top: 36px;
+  }
+
+  .contact-card div + div {
+    border-left: 0;
+    border-top: 1px solid #e2e7ef;
+  }
+
+  .contact-card div {
+    padding: 24px;
   }
 }
 
