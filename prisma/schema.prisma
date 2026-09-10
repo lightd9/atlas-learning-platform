@@ -1,0 +1,320 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ATLAS_ADMIN
+  INSTRUCTOR
+  HEADTEACHER
+  TEACHER
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum MuxUploadStatus {
+  CREATING
+  WAITING
+  PROCESSING
+  READY
+  FAILED
+  CANCELLED
+}
+
+model School {
+  id              String           @id @default(cuid())
+  name            String
+  slug            String           @unique
+  active          Boolean          @default(true)
+  users           User[]
+  courseAccess    SchoolCourse[]
+  invitations     Invitation[]
+  auditLogs       AuditLog[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model User {
+  id              String           @id @default(cuid())
+  schoolId        String?
+  school          School?          @relation(fields: [schoolId], references: [id])
+  email           String           @unique
+  name            String
+  passwordHash    String?
+  role            UserRole
+  status          UserStatus       @default(INVITED)
+  lastActiveAt    DateTime?
+  invitationsSent Invitation[]     @relation("InvitedBy")
+  invitation      Invitation?      @relation("AcceptedInvitation")
+  progress        CourseProgress[]
+  lessonProgress   LessonProgress[]
+  coursesCreated  Course[]         @relation("CourseCreator")
+  passwordResetTokens PasswordResetToken[]
+  auditLogs       AuditLog[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  email          String
+  name           String
+  schoolId       String?
+  school         School?          @relation(fields: [schoolId], references: [id])
+  role           UserRole         @default(TEACHER)
+  invitedById    String
+  invitedBy      User             @relation("InvitedBy", fields: [invitedById], references: [id])
+  acceptedBy     User?            @relation("AcceptedInvitation", fields: [acceptedById], references: [id])
+  acceptedById   String?          @unique
+  tokenHash      String           @unique
+  status         InvitationStatus @default(PENDING)
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([schoolId, status])
+  @@index([email, status])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model Course {
+  id              String           @id @default(cuid())
+  slug            String           @unique
+  title           String
+  description     String
+  durationMinutes Int
+  muxPlaybackId   String?
+  published       Boolean          @default(true)
+  sectionId       String?
+  section         CourseSection?   @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  createdById     String?
+  createdBy       User?            @relation("CourseCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  schoolAccess    SchoolCourse[]
+  progress        CourseProgress[]
+  modules         CourseModule[]
+  resources       CourseResource[]
+  notes           String?          @db.Text
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([sectionId])
+  @@index([createdById])
+}
+
+model CourseResource {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  url         String
+  fileName    String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId, sortOrder])
+}
+
+model CourseModule {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  sortOrder   Int      @default(0)
+  lessons     Lesson[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId, sortOrder])
+}
+
+model Lesson {
+  id              String           @id @default(cuid())
+  moduleId        String
+  module          CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  durationSeconds Int              @default(0)
+  muxPlaybackId   String?
+  sortOrder       Int              @default(0)
+  published       Boolean          @default(true)
+  progress        LessonProgress[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([moduleId, sortOrder])
+}
+
+model LessonProgress {
+  id                String         @id @default(cuid())
+  userId            String
+  lessonId          String
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson            Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  status            ProgressStatus @default(NOT_STARTED)
+  watchedSeconds    Int            @default(0)
+  watchedRanges     String         @default("[]") @db.Text
+  durationSeconds   Int            @default(0)
+  percentComplete   Decimal        @default(0) @db.Decimal(5, 2)
+  completedAt       DateTime?
+  lastWatchedAt     DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@unique([userId, lessonId])
+  @@index([lessonId, status])
+}
+
+model CourseSection {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  courses     Course[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}
+
+model SchoolCourse {
+  schoolId  String
+  courseId  String
+  enabled   Boolean  @default(true)
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([schoolId, courseId])
+}
+
+model CourseProgress {
+  id                String         @id @default(cuid())
+  userId            String
+  courseId          String
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course            Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status            ProgressStatus @default(NOT_STARTED)
+  watchedSeconds    Int            @default(0)
+  durationSeconds   Int            @default(0)
+  percentComplete   Decimal        @default(0) @db.Decimal(5, 2)
+  completedAt       DateTime?
+  lastWatchedAt     DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([courseId, status])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  userId    String?
+  schoolId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  school School? @relation(fields: [schoolId], references: [id])
+
+  @@index([action, createdAt])
+  @@index([userId, createdAt])
+}
+
+model EmailDelivery {
+  id         String   @id @default(cuid())
+  to         String
+  subject    String
+  type       String
+  status     String
+  providerId String?
+  error      String?
+  createdAt  DateTime @default(now())
+
+  @@index([to, createdAt])
+  @@index([status, createdAt])
+}
+
+model MuxAsset {
+  id          String   @id
+  playbackId  String?
+  status      String
+  passthrough String?
+  duration    Float?
+  rawData     String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([playbackId])
+  @@index([status, updatedAt])
+}
+
+model MuxUpload {
+  id            String          @id @default(cuid())
+  muxUploadId   String?         @unique
+  muxAssetId    String?         @unique
+  playbackId    String?
+  courseId      String
+  lessonId      String
+  requestedById String
+  filename      String?
+  sizeBytes     BigInt?
+  duration      Float?
+  status        MuxUploadStatus @default(CREATING)
+  errorCode     String?
+  errorMessage  String?
+  rawData       String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([courseId, lessonId, createdAt])
+  @@index([status, updatedAt])
+}
+
+model RateLimitBucket {
+  key       String   @id
+  count     Int
+  resetAt   DateTime
+  updatedAt DateTime @updatedAt
+
+  @@index([resetAt])
+}

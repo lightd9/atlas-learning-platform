@@ -1,0 +1,303 @@
+﻿/* Mobile layout overrides. Keep these after the prototype styles so the
+   desktop reference layout remains unchanged at larger breakpoints. */
+
+@media (max-width: 1050px) {
+  .topbar { padding-inline: 20px; gap: 16px; }
+  .top-nav, .school-name { display: none; }
+  .top-search { width: min(300px, 32vw); margin-right: auto; }
+  .page-wrap { padding: 34px 28px 64px; }
+  .course-grid, .library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .analytics-grid, .lesson-layout, .dashboard-lower { grid-template-columns: 1fr; }
+  .lesson-list { max-height: none; }
+}
+
+@media (max-width: 760px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .app-shell > .topbar {
+    position: fixed;
+    inset: 0 0 auto 0;
+    width: 100%;
+    height: 64px;
+    padding: 0 14px;
+    gap: 8px;
+    z-index: 25;
+    box-sizing: border-box;
+    box-shadow: 0 3px 14px rgba(16, 24, 40, .08);
+  }
+  .topbar > .logo, .top-search, .top-actions .school-name, .top-actions .user-name { display: none; }
+  .mobile-menu { display: grid; }
+  .top-actions { margin-left: auto; }
+  .app-shell > .body-layout { min-height: 100dvh; padding-top: 64px; box-sizing: border-box; }
+  .sidebar-scrim { position: fixed; inset: 0; z-index: 30; border: 0; background: rgba(16, 24, 40, .52); }
+  .sidebar { position: fixed; z-index: 40; inset: 0 auto 0 0; width: min(86vw, 320px); padding: 18px 15px; transform: translateX(-105%); transition: transform .22s ease-out; overflow-y: auto; box-shadow: 18px 0 42px rgba(16, 24, 40, .18); }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-head { display: flex; align-items: center; justify-content: space-between; min-height: 48px; margin-bottom: 10px; }
+  .close-menu { display: grid; }
+
+  .top-actions {
+    flex-shrink: 0;
+  }
+
+  .top-actions .notification-trigger {
+    display: grid;
+    width: 36px;
+    height: 36px;
+  }
+
+  .notification-count {
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    line-height: 1;
+  }
+
+  .notification-panel {
+    position: fixed;
+    top: 70px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-height: calc(100dvh - 86px);
+  }
+
+  .page-wrap {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .page-heading > div {
+    min-width: 0;
+  }
+
+  .page-heading { align-items: stretch; flex-direction: column; gap: 18px; margin-bottom: 24px; }
+  .page-heading h1 { font-size: clamp(24px, 8vw, 29px); overflow-wrap: anywhere; }
+
+  .page-heading .primary-button,
+  .page-heading .secondary-button {
+    width: 100%;
+  }
+
+  .overview-actions,
+  .school-profile-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .overview-actions .primary-button,
+  .overview-actions .secondary-button,
+  .school-profile-actions .secondary-button {
+    width: auto;
+    min-width: 0;
+    padding-inline: 10px;
+  }
+
+  .section-head { align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+
+  .section-head > .text-button {
+    margin-left: 0;
+  }
+
+  .detail-hero,
+  .panel {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .panel { padding: 18px; }
+  .panel-head { gap: 12px; flex-wrap: wrap; }
+  .course-grid, .library-grid { grid-template-columns: 1fr; }
+  .hero-card { height: auto; min-height: 310px; padding: 28px 24px; margin-bottom: 34px; }
+  .hero-copy { width: min(100%, 390px); }
+  .hero-copy h2 { font-size: 27px; }
+  .hero-orbit { right: -80px; top: 58px; opacity: .38; pointer-events: none; }
+  .detail-hero { align-items: flex-start; padding: 24px 20px; }
+  .detail-hero h1 { font-size: 27px; }
+  .detail-art { display: none; }
+  .detail-meta { align-items: flex-start; flex-direction: column; gap: 9px; }
+  .filter-row { overflow-x: auto; padding-bottom: 14px; scrollbar-width: thin; }
+  .filter { flex: 0 0 auto; min-height: 40px; }
+
+  .course-editor-layout,
+  .account-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .course-editor-layout > * {
+    min-width: 0;
+  }
+
+  .resource-form {
+    grid-template-columns: 1fr !important;
+  }
+
+  .section-create-form {
+    grid-template-columns: 1fr !important;
+  }
+
+  .school-profile-fields {
+    grid-template-columns: 1fr !important;
+  }
+
+  .course-create-resource-row {
+    grid-template-columns: 1fr 32px !important;
+  }
+
+  .course-create-resource-row input:nth-of-type(2),
+  .course-create-resource-row input:nth-of-type(3) {
+    grid-column: 1;
+  }
+
+  .course-create-resource-row .icon-button {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .resource-form .secondary-button {
+    width: 100%;
+  }
+
+  .lesson-editor-row {
+    grid-template-columns: 26px minmax(0, 1fr) 36px !important;
+  }
+
+  .lesson-editor-row > input:nth-of-type(n + 2) {
+    display: none;
+  }
+
+  .lesson-editor-row .icon-button {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .admin-table {
+    min-width: 640px;
+  }
+
+  .table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .metric-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .overview-lower-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .school-profile-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px;
+  }
+
+  .school-profile-metrics .metric-card {
+    padding: 14px 10px;
+  }
+
+  .school-profile-metrics .metric-card span {
+    font-size: 9px;
+  }
+
+  .school-profile-metrics .metric-card strong {
+    font-size: 16px;
+  }
+
+  .metric-card {
+    min-width: 0;
+  }
+
+  .chart { min-width: 0; height: 210px; }
+  .chart-y { width: 32px; }
+  .donut { width: 140px; height: 140px; }
+  .donut:before { width: 94px; height: 94px; }
+
+  .detail-meta {
+    row-gap: 10px;
+  }
+
+  .lesson-list {
+    max-height: none;
+  }
+
+  .video-stage {
+    min-height: 220px;
+    padding: 14px;
+  }
+
+  .login-card {
+    width: min(420px, calc(100vw - 32px));
+    box-sizing: border-box;
+    padding: 28px 22px;
+  }
+
+  .login-brand {
+    left: 16px;
+    top: 18px;
+  }
+
+  .team-actions {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .team-actions > *, .panel-head .primary-button, .panel-head .secondary-button { flex: 1 1 180px; }
+  form input, form select, form textarea { max-width: 100%; }
+  .help-layout { grid-template-columns: 1fr !important; }
+  .course-materials, .course-notes, .course-resources { min-width: 0; }
+  .resource-item span, .resource-item small { min-width: 0; overflow-wrap: anywhere; }
+  .primary-button, .secondary-button, .icon-button, .text-button, .side-item, .lesson, .filter { touch-action: manipulation; }
+  .primary-button, .secondary-button { min-height: 44px; }
+
+  .upload-card .secondary-button {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .admin-table td,
+  .admin-table th {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+@media (max-width: 420px) {
+  .page-wrap {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+
+  .metric-grid:not(.admin-mobile-two-column):not(.school-profile-metrics) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .top-search {
+    min-width: 0;
+  }
+
+  .top-actions .avatar {
+    display: none;
+  }
+
+  .course-card-body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .hero-orbit { display: none; }
+  .hero-card { min-height: 0; }
+  .lesson-editor-row { grid-template-columns: 24px minmax(0, 1fr) 36px !important; gap: 6px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar { transition: none; }
+}
+
+

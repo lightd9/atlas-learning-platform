@@ -1,0 +1,39 @@
+export function parseCsv(text: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let value = ''
+  let quoted = false
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index]
+    const next = text[index + 1]
+
+    if (char === '"') {
+      if (quoted && next === '"') {
+        value += '"'
+        index += 1
+      } else {
+        quoted = !quoted
+      }
+    } else if (char === ',' && !quoted) {
+      row.push(value.trim())
+      value = ''
+    } else if ((char === '\n' || char === '\r') && !quoted) {
+      if (char === '\r' && next === '\n') index += 1
+      row.push(value.trim())
+      if (row.some((cell) => cell !== '')) rows.push(row)
+      row = []
+      value = ''
+    } else {
+      value += char
+    }
+  }
+
+  row.push(value.trim())
+  if (row.some((cell) => cell !== '')) rows.push(row)
+  return rows
+}
+
+export function normalizeCsvHeader(value: string) {
+  return value.toLowerCase().replace(/[\s_-]/g, '')
+}

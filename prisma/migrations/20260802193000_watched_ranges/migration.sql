@@ -1,0 +1,1 @@
+ALTER TABLE "LessonProgress" ADD COLUMN IF NOT EXISTS "watchedRanges" TEXT NOT NULL DEFAULT '[]';

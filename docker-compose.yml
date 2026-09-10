@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: atlas-learning-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: atlas_local_password
+      POSTGRES_DB: atlas_learning
+    ports:
+      - "5433:5432"
+    volumes:
+      - atlas_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  atlas_postgres_data:
