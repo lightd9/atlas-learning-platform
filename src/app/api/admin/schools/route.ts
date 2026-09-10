@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAtlasAdmin } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
-import { createInvitationToken } from '@/lib/invitations'
+import { createInvitationToken, invitationExpiry } from '@/lib/invitations'
 import { headteacherSetupEmail, sendEmail } from '@/lib/email'
 import { auditLog } from '@/lib/audit'
 
@@ -44,16 +44,21 @@ export async function POST(request: Request) {
     const school = await prisma.school.create({ data: { name, slug } })
 
     let setupUrl: string | null = null
+    let invitationId: string | null = null
+    let invitationExpiresAt: Date | null = null
     if (headteacherEmail && headteacherName) {
       const { rawToken, tokenHash } = createInvitationToken()
-      await prisma.invitation.create({ data: { email: headteacherEmail.toLowerCase(), name: headteacherName, role: 'HEADTEACHER', schoolId: school.id, invitedById: admin.id, tokenHash, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) } })
+      const expiresAt = invitationExpiry()
+      const invitation = await prisma.invitation.create({ data: { email: headteacherEmail.toLowerCase(), name: headteacherName, role: 'HEADTEACHER', schoolId: school.id, invitedById: admin.id, tokenHash, expiresAt } })
+      invitationId = invitation.id
+      invitationExpiresAt = invitation.expiresAt
       setupUrl = `/setup/${rawToken}`
       const email = headteacherSetupEmail(headteacherName, school.name, rawToken)
       await sendEmail({ to: headteacherEmail.toLowerCase(), ...email })
       await auditLog({ action: 'INVITATION.CREATE', userId: admin.id, schoolId: school.id, details: `Headteacher invitation created for ${headteacherEmail.toLowerCase()}` })
     }
 
-    return NextResponse.json({ school: { id: school.id, name: school.name, slug: school.slug, active: school.active }, setupUrl }, { status: 201 })
+    return NextResponse.json({ school: { id: school.id, name: school.name, slug: school.slug, active: school.active }, setupUrl, invitationId, expiresAt: invitationExpiresAt?.toISOString() ?? null }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error && error.message === 'UNAUTHORIZED' ? 'Unauthorized' : 'Unable to create school'
     return NextResponse.json({ error: message }, { status: message === 'Unauthorized' ? 401 : 403 })

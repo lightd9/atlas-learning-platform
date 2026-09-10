@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireSchoolManager } from '@/lib/access'
-import { createInvitationToken } from '@/lib/invitations'
+import { createInvitationToken, invitationExpiry } from '@/lib/invitations'
 import { prisma } from '@/lib/prisma'
 import { rateLimit } from '@/lib/rate-limit'
 import { auditLog } from '@/lib/audit'
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 
     // Check for existing pending invitations
     const existingInvitations = await prisma.invitation.findMany({
-      where: { email: { in: emails }, status: 'PENDING' },
+      where: { email: { in: emails }, status: 'PENDING', expiresAt: { gt: new Date() } },
       select: { email: true },
     })
     if (existingInvitations.length > 0) {
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       }, { status: 409 })
     }
 
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const expiresAt = invitationExpiry()
     const prepared = body.data.invitations.map((invitation) => ({ invitation, ...createInvitationToken() }))
     const created = await prisma.$transaction(prepared.map(({ invitation, tokenHash }) => prisma.invitation.create({
       data: { ...invitation, schoolId: body.data.role === 'TEACHER' || body.data.role === 'HEADTEACHER' ? schoolId : null, role: body.data.role, invitedById: manager.id, tokenHash, expiresAt },

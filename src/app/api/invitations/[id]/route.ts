@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireSchoolManager } from '@/lib/access'
-import { createInvitationToken } from '@/lib/invitations'
+import { createInvitationToken, invitationExpiry } from '@/lib/invitations'
 import { prisma } from '@/lib/prisma'
 import { invitationResendEmail, headteacherSetupEmail, sendEmail } from '@/lib/email'
 import { auditLog } from '@/lib/audit'
@@ -22,7 +22,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     // Create a new token
     const { rawToken, tokenHash } = createInvitationToken()
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const expiresAt = invitationExpiry()
 
     await prisma.invitation.update({
       where: { id },

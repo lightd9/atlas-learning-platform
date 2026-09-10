@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
-import { createInvitationToken } from '@/lib/invitations'
+import { createInvitationToken, invitationExpiry } from '@/lib/invitations'
 import { headteacherSetupEmail, invitationResendEmail, sendEmail } from '@/lib/email'
 import { auditLog } from '@/lib/audit'
 import { rateLimit } from '@/lib/rate-limit'
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     if (!invitation) return NextResponse.json({ sent: true })
 
     const { rawToken, tokenHash } = createInvitationToken()
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const expiresAt = invitationExpiry()
     await prisma.invitation.update({ where: { id: invitation.id }, data: { tokenHash, expiresAt, status: 'PENDING' } })
     const school = invitation.schoolId ? await prisma.school.findUnique({ where: { id: invitation.schoolId }, select: { name: true } }) : null
     const email = invitation.role === 'HEADTEACHER'

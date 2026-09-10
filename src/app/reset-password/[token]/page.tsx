@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Logo from '@/components/Logo'
 import PasswordInput from '@/components/PasswordInput'
@@ -9,7 +9,6 @@ import BackToHome from '@/components/BackToHome'
 
 export default function ResetPasswordPage() {
   const params = useParams()
-  const router = useRouter()
   const token = params.token as string
   const [step, setStep] = useState<'email' | 'reset' | 'done' | 'error'>('email')
   const [email, setEmail] = useState('')
@@ -38,62 +37,62 @@ export default function ResetPasswordPage() {
     setStep('done')
   }
 
-  if (step === 'error') {
-    return (
-      <div className="login-page">
-        <div className="login-card" style={{ textAlign: 'center' }}>
-          <BackToHome />
-          <span className="login-symbol">!</span>
-          <h2>Link expired</h2>
-          <p className="muted">{error}</p>
-          <Link href="/forgot-password" className="primary-button" style={{ display: 'inline-flex', marginTop: 16 }}>Request new link</Link>
-        </div>
-      </div>
-    )
-  }
-
-  if (step === 'done') {
-    return (
-      <div className="login-page">
-        <div className="login-card" style={{ textAlign: 'center' }}>
-          <BackToHome />
-          <span className="login-symbol">✓</span>
-          <h2>Password reset</h2>
-          <p className="muted">Your password has been updated. You can now log in.</p>
-          <Link href="/login" className="primary-button" style={{ display: 'inline-flex', marginTop: 16 }}>Log in</Link>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="login-page">
-      <Link href="/" className="login-brand"><Logo /></Link>
-      {step === 'email' ? (
+      <div className="login-layout">
+        <aside className="login-visual">
+          <Link className="login-visual-brand" href="/" aria-label="Atlas Learning home"><Logo /></Link>
+          <p className="login-visual-caption">Your school&apos;s learning space is private and secure.</p>
+        </aside>
         <div className="login-card">
-          <BackToHome />
-          <span className="login-symbol">🔑</span>
-          <h2>Reset password</h2>
-          <p className="muted">Enter the email associated with your account.</p>
-          <form onSubmit={handleEmailSubmit}>
-            <label>Email <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@school.edu" /></label>
-            <button type="submit" className="primary-button" style={{ width: '100%', justifyContent: 'center', marginTop: 16 }}>Continue</button>
-          </form>
+          {step === 'error' && (
+            <div style={{ textAlign: 'center' }}>
+              <BackToHome />
+              <h1>Link expired</h1>
+              <p className="muted">{error}</p>
+              <Link href="/forgot-password" className="primary-button login-submit" style={{ marginTop: 16 }}>Request new link</Link>
+            </div>
+          )}
+
+          {step === 'done' && (
+            <div style={{ textAlign: 'center' }}>
+              <BackToHome />
+              <h1>Password reset</h1>
+              <p className="muted">Your password has been updated. You can now log in.</p>
+              <Link href="/login" className="primary-button login-submit" style={{ marginTop: 16 }}>Log in</Link>
+            </div>
+          )}
+
+          {step === 'email' && (
+            <>
+              <BackToHome />
+              <h1>Reset password</h1>
+              <p className="muted">Enter the email associated with your account.</p>
+              <form onSubmit={handleEmailSubmit}>
+                <label htmlFor="email">Email address</label>
+                <input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@school.org" required />
+                <button className="primary-button login-submit" type="submit">Continue</button>
+              </form>
+            </>
+          )}
+
+          {step === 'reset' && (
+            <>
+              <BackToHome />
+              <h1>New password</h1>
+              <p className="muted">Choose a new password for {email}</p>
+              <form onSubmit={handleReset}>
+                {error && <p style={{ color: '#00000', fontSize: 12, marginBottom: 16, padding: '10px 14px', background: '#b42318', borderRadius: 8 }}>{error}</p>}
+                <label htmlFor="password">New password</label>
+                <PasswordInput id="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} placeholder="At least 8 characters" />
+                <label htmlFor="confirm">Confirm password</label>
+                <PasswordInput id="confirm" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required placeholder="Repeat your password" />
+                <button className="primary-button login-submit" type="submit">Reset password</button>
+              </form>
+            </>
+          )}
         </div>
-      ) : (
-        <div className="login-card">
-          <BackToHome />
-          <span className="login-symbol">🔑</span>
-          <h2>New password</h2>
-          <p className="muted">Choose a new password for {email}</p>
-          <form onSubmit={handleReset}>
-            <label>New password <PasswordInput autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} placeholder="At least 8 characters" /></label>
-            <label>Confirm <PasswordInput autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required placeholder="Repeat your password" /></label>
-            {error && <p style={{ color: '#e53e3e', fontSize: 12 }}>{error}</p>}
-            <button type="submit" className="primary-button" style={{ width: '100%', justifyContent: 'center', marginTop: 16 }}>Reset password</button>
-          </form>
-        </div>
-      )}
+      </div>
     </div>
   )
 }

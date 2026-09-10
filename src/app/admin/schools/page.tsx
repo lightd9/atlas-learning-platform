@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Building2, Plus, Search } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
+import SetupLinkCard from '@/components/SetupLinkCard'
 import { useToast } from '@/components/Toast'
 import type { AdminSchool } from '@/types/api'
 
@@ -18,7 +19,7 @@ export default function AdminSchoolsPage() {
   const [form, setForm] = useState({ name: '', slug: '', headteacherEmail: '', headteacherName: '' })
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
-  const [setupUrl, setSetupUrl] = useState('')
+  const [setup, setSetup] = useState<{ invitationId?: string; url: string; expiresAt?: string } | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
@@ -31,6 +32,7 @@ export default function AdminSchoolsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setSetup(null)
     const res = await fetch('/api/admin/schools', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -39,7 +41,7 @@ export default function AdminSchoolsPage() {
     const data = await res.json()
     if (!res.ok) { const message = data.error ?? 'Unable to create school'; setError(message); toast(message, 'error'); return }
     setSchools([data.school, ...schools])
-    setSetupUrl(data.setupUrl ? `${window.location.origin}${data.setupUrl}` : '')
+    setSetup(data.setupUrl ? { invitationId: data.invitationId, url: `${window.location.origin}${data.setupUrl}`, expiresAt: data.expiresAt } : null)
     setShowCreate(false)
     setForm({ name: '', slug: '', headteacherEmail: '', headteacherName: '' })
     toast('School created', 'success')
@@ -69,7 +71,7 @@ export default function AdminSchoolsPage() {
               <button type="submit" className="primary-button">Create school</button>
               <button type="button" className="secondary-button" onClick={() => setShowCreate(false)}>Cancel</button>
             </div>
-            {setupUrl && <p style={{ background: '#ecfdf3', padding: 10, fontSize: 12, overflowWrap: 'anywhere' }}>Headteacher setup link: <a href={setupUrl}>{setupUrl}</a></p>}
+            {setup && <SetupLinkCard label="Headteacher setup link" setupUrl={setup.url} invitationId={setup.invitationId} expiresAt={setup.expiresAt} />}
           </form>
         </div>
       )}
