@@ -16,7 +16,7 @@ export default function AdminCoursesPage() {
   const [sections, setSections] = useState<ApiCourseSection[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ slug: '', title: '', description: '', durationMinutes: 20, muxPlaybackId: '', sectionId: '', notes: '' })
+  const [form, setForm] = useState({ slug: '', title: '', description: '', durationMinutes: 20, muxPlaybackId: '', notes: '' })
   const [resources, setResources] = useState<{ title: string; description: string; url: string; fileName: string; sortOrder: number }[]>([])
   const [modules, setModules] = useState<{ title: string; description: string; sortOrder: number; lessons: { title: string; description: string; durationSeconds: number; sortOrder: number }[] }[]>([])
   const [error, setError] = useState('')
@@ -44,7 +44,7 @@ export default function AdminCoursesPage() {
     if (!res.ok) { const message = data.error ?? 'Unable to create course'; setError(message); toast(message, 'error'); return }
     setCourses([data.course, ...courses])
     setShowCreate(false)
-    setForm({ slug: '', title: '', description: '', durationMinutes: 20, muxPlaybackId: '', sectionId: '', notes: '' })
+    setForm({ slug: '', title: '', description: '', durationMinutes: 20, muxPlaybackId: '', notes: '' })
     setModules([])
     setResources([])
     toast('Course created', 'success')
@@ -91,7 +91,6 @@ export default function AdminCoursesPage() {
             <textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required style={{ ...inputStyle, height: 80, paddingTop: 10, resize: 'vertical' }} />
             <input placeholder="Duration (minutes)" type="number" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })} required style={inputStyle} />
             <input placeholder="Mux playback ID (optional)" value={form.muxPlaybackId} onChange={(e) => setForm({ ...form, muxPlaybackId: e.target.value })} style={inputStyle} />
-            <label style={labelStyle}>Course section<select value={form.sectionId} onChange={(e) => setForm({ ...form, sectionId: e.target.value })} style={inputStyle}><option value="">Unsectioned</option>{sections.map((section) => <option value={section.id} key={section.id}>{section.name}</option>)}</select></label>
             <label style={labelStyle}>Learner notes<textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes learners should read below the video player" style={{ ...inputStyle, height: 90, paddingTop: 10, resize: 'vertical' }} /></label>
 
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 16 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}><h4 style={{ margin: 0, fontSize: 14 }}>Downloadable resources</h4><button type="button" className="secondary-button" style={{ height: 32, fontSize: 12 }} onClick={() => setResources([...resources, { title: '', description: '', url: '', fileName: '', sortOrder: resources.length }])}><Plus size={14} /> Add resource</button></div>{resources.map((resource, index) => <div className="course-create-resource-row" key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 1fr 32px', gap: 7, marginBottom: 8 }}><input placeholder="Resource title" value={resource.title} onChange={(e) => { const next = [...resources]; next[index] = { ...next[index], title: e.target.value }; setResources(next) }} style={smallInputStyle} /><input placeholder="Download URL" type="url" value={resource.url} onChange={(e) => { const next = [...resources]; next[index] = { ...next[index], url: e.target.value }; setResources(next) }} style={smallInputStyle} /><input placeholder="File name (optional)" value={resource.fileName} onChange={(e) => { const next = [...resources]; next[index] = { ...next[index], fileName: e.target.value }; setResources(next) }} style={smallInputStyle} /><button type="button" className="icon-button" aria-label="Remove resource" onClick={() => setResources(resources.filter((_, resourceIndex) => resourceIndex !== index))}><Trash2 size={14} /></button></div>)}</div>
