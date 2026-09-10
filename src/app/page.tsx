@@ -22,20 +22,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import PublicFooter from "@/components/PublicFooter";
 import PublicNavbar from "@/components/PublicNavbar";
 
+/* Restore the first slide by uncommenting the block below and removing the current first slide */
 const slides = [
-  {
-    title: (
-      <>
-        Upgrade your skills
-        <br />
-        for a better future
-      </>
-    ),
-    copy: "Clear, accessible learning built for teachers, school leaders and support teams.",
-    image: "/hero-1.png",
-    alt: "A confident learner celebrating her progress",
-    variant: "reference",
-  },
+  // {
+  //   title: (
+  //     <>
+  //       Upgrade your skills
+  //       <br />
+  //       for a better future
+  //     </>
+  //   ),
+  //   copy: "Clear, accessible learning built for teachers, school leaders and support teams.",
+  //   image: "/hero-1.png",
+  //   alt: "A confident learner celebrating her progress",
+  //   variant: "reference",
+  // },
   {
     title: (
       <>
@@ -119,9 +120,6 @@ const courseCategories = [
   "All courses",
   "Artificial Intelligence",
   "Safety",
-  "Productivity",
-  "Cybersecurity",
-  "Leadership",
 ] as const;
 
 type CourseStatus = "available" | "coming-soon";
@@ -156,86 +154,6 @@ const featuredCourses: {
     status: "available",
     image:
       "https://images.unsplash.com/photo-1516321165247-4aa89a48be28?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "Cybersecurity Awareness for Schools",
-    category: "Cybersecurity",
-    duration: "Coming soon",
-    status: "coming-soon",
-    image:
-      "https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "Generative AI for Teachers",
-    category: "Artificial Intelligence",
-    duration: "Coming soon",
-    status: "coming-soon",
-    image:
-      "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "Online Safety Essentials",
-    category: "Safety",
-    duration: "Coming soon",
-    status: "coming-soon",
-    image:
-      "https://images.unsplash.com/photo-1614064641938-3bbee52942c7?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "Digital Wellbeing for Staff",
-    category: "Safety",
-    duration: "Coming soon",
-    status: "coming-soon",
-    image:
-      "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "Microsoft 365 for School Teams",
-    category: "Productivity",
-    duration: "Coming soon",
-    status: "coming-soon",
-    image:
-      "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "Better Digital Communication",
-    category: "Productivity",
-    duration: "Coming soon",
-    status: "coming-soon",
-    image:
-      "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "Time Management with Digital Tools",
-    category: "Productivity",
-    duration: "Coming soon",
-    status: "coming-soon",
-    image:
-      "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "Protecting School Data",
-    category: "Cybersecurity",
-    duration: "Coming soon",
-    status: "coming-soon",
-    image:
-      "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "Leading Digital Change",
-    category: "Leadership",
-    duration: "Coming soon",
-    status: "coming-soon",
-    image:
-      "https://images.unsplash.com/photo-1507537297725-24a1c029d3ca?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "Coaching & Team Development",
-    category: "Leadership",
-    duration: "Coming soon",
-    status: "coming-soon",
-    image:
-      "https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&w=800&q=85",
   },
 ];
 
@@ -686,14 +604,14 @@ export default function HomePage() {
             </p>
           </div>
           <div className="atlas-roadmap-chips">
-            {roadmap.map((item, index) => (
-              <span className={index === 0 ? "active" : ""} key={item}>
-                {item}
-                <b>+</b>
-              </span>
-            ))}
-          </div>
-        </section>
+              {roadmap.map((item, index) => (
+                <span className={index === 0 ? "active" : ""} key={item}>
+                  {item}
+                  <b>+</b>
+                </span>
+              ))}
+            </div>
+          </section>
 
         <section
           className="atlas-section atlas-reviews"
@@ -703,21 +621,21 @@ export default function HomePage() {
           <p className="atlas-section-kicker">Learner feedback</p>
           <h2 id="reviews-title">Explore member reviews</h2>
           <div className="atlas-review-grid">
-            {reviews.map(([quote, name, role]) => (
-              <blockquote key={name}>
-                <p>{quote}</p>
-                <footer>
-                  <div>
-                    <strong>{name}</strong>
-                    <span>{role}</span>
-                  </div>
-                  <Stars />
-                </footer>
-              </blockquote>
-            ))}
-          </div>
-          <button type="button">View more</button>
-        </section>
+              {reviews.map(([quote, name, role]) => (
+                <blockquote key={name}>
+                  <p>{quote}</p>
+                  <footer>
+                    <div>
+                      <strong>{name}</strong>
+                      <span>{role}</span>
+                    </div>
+                    <Stars />
+                  </footer>
+                </blockquote>
+              ))}
+            </div>
+            <button type="button">View more</button>
+          </section>
 
         <section className="atlas-join-banner">
           <div>
