@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireSchoolManager } from '@/lib/access'
-import { createInvitationToken, invitationExpiry } from '@/lib/invitations'
+import { createInvitationToken, invitationExpiry, INVITATION_RESEND_COOLDOWN_MS } from '@/lib/invitations'
 import { prisma } from '@/lib/prisma'
 import { rateLimit } from '@/lib/rate-limit'
 import { auditLog } from '@/lib/audit'
@@ -70,14 +70,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Some users already have active accounts: ${activeEmails.join(', ')}` }, { status: 409 })
     }
 
-    // Check for existing pending invitations
+    // Check for existing recent pending invitations (1-hour resend cooldown)
     const existingInvitations = await prisma.invitation.findMany({
-      where: { email: { in: emails }, status: 'PENDING', expiresAt: { gt: new Date() } },
+      where: { email: { in: emails }, status: 'PENDING', createdAt: { gt: new Date(Date.now() - INVITATION_RESEND_COOLDOWN_MS) } },
       select: { email: true },
     })
     if (existingInvitations.length > 0) {
       return NextResponse.json({
-        error: 'Some teachers already have pending invitations',
+        error: 'Some teachers already have recent pending invitations. Please wait for an hour before resending.',
         pendingEmails: existingInvitations.map((i) => i.email),
       }, { status: 409 })
     }

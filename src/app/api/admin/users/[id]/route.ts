@@ -25,10 +25,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const admin = await requireAtlasAdmin()
     const { id } = await params
     if (id === admin.id) return NextResponse.json({ error: 'You cannot delete your own account.' }, { status: 400 })
-    const user = await prisma.user.findUnique({ where: { id }, select: { id: true } })
+    const user = await prisma.user.findUnique({ where: { id }, select: { id: true, email: true } })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
     await prisma.$transaction([
-      prisma.invitation.deleteMany({ where: { invitedById: id } }),
+      prisma.invitation.deleteMany({ where: { OR: [{ email: user.email }, { invitedById: id }] } }),
       prisma.user.delete({ where: { id } }),
     ])
     return NextResponse.json({ success: true })

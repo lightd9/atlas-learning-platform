@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAtlasAdmin } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
-import { createInvitationToken, invitationExpiry } from '@/lib/invitations'
+import { createInvitationToken, invitationExpiry, INVITATION_RESEND_COOLDOWN_MS } from '@/lib/invitations'
 import { roleInvitationEmail, sendEmail } from '@/lib/email'
 
 const createSchema = z.object({
@@ -44,13 +44,15 @@ export async function POST(request: Request) {
     if (body.data.role === 'HEADTEACHER' && !body.data.schoolId) return NextResponse.json({ error: 'Select a school for a headteacher.' }, { status: 400 })
     const existing = await prisma.user.findUnique({ where: { email: body.data.email } })
     if (existing?.status === 'ACTIVE') return NextResponse.json({ error: 'A user with this email already has an active account.' }, { status: 409 })
-    const pending = await prisma.invitation.findFirst({ where: { email: body.data.email, status: 'PENDING', expiresAt: { gt: new Date() } } })
-    if (pending) return NextResponse.json({ error: 'A pending invitation already exists for this email. You can send a new one once the current link expires.' }, { status: 409 })
+    const latestPending = await prisma.invitation.findFirst({ where: { email: body.data.email, status: 'PENDING' }, orderBy: { createdAt: 'desc' } })
+    if (latestPending && Date.now() - latestPending.createdAt.getTime() < INVITATION_RESEND_COOLDOWN_MS) return NextResponse.json({ error: 'A pending invitation already exists for this email. Please wait for an hour before trying again.' }, { status: 409 })
     const { rawToken, tokenHash } = createInvitationToken()
     const expiresAt = invitationExpiry()
-    const invitation = await prisma.invitation.create({
-      data: { name: body.data.name, email: body.data.email, role: body.data.role, schoolId: body.data.role === 'HEADTEACHER' ? body.data.schoolId : null, invitedById: admin.id, tokenHash, expiresAt },
-    })
+    const invitation = latestPending
+      ? await prisma.invitation.update({ where: { id: latestPending.id }, data: { tokenHash, expiresAt, status: 'PENDING' } })
+      : await prisma.invitation.create({
+          data: { name: body.data.name, email: body.data.email, role: body.data.role, schoolId: body.data.role === 'HEADTEACHER' ? body.data.schoolId : null, invitedById: admin.id, tokenHash, expiresAt },
+        })
     const school = invitation.schoolId ? await prisma.school.findUnique({ where: { id: invitation.schoolId }, select: { name: true } }) : null
     const email = roleInvitationEmail({ name: invitation.name, role: invitation.role, setupToken: rawToken, invitedByName: admin.name, schoolName: school?.name })
     let emailDelivery: 'sent' | 'failed' = 'sent'
