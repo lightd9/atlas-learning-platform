@@ -1,0 +1,172 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { Mail, UsersRound, RefreshCw } from 'lucide-react'
+import AdminShell from '@/components/AdminShell'
+import SetupLinkCard from '@/components/SetupLinkCard'
+import { useToast } from '@/components/Toast'
+
+interface AdminInvitation {
+  id: string
+  name: string
+  email: string
+  role: string
+  status: 'PENDING' | 'EXPIRED' | 'REVOKED'
+  schoolName: string | null
+  invitedBy: string
+  expiresAt: string
+  createdAt: string
+}
+
+export default function AdminInvitationsPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const { toast } = useToast()
+  const [invitations, setInvitations] = useState<AdminInvitation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [resendLink, setResendLink] = useState<{ invitationId?: string; url: string; expiresAt?: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function load() {
+    const res = await fetch('/api/admin/invitations')
+    if (!res.ok) { toast('Unable to load invitations', 'error'); return }
+    const data = await res.json()
+    setInvitations(data.invitations ?? [])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (status === 'unauthenticated') { router.push('/login'); return }
+    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN') { router.push('/dashboard'); return }
+    if (status === 'authenticated') load()
+  }, [status, session, router])
+
+  async function resendInvitation(inv: AdminInvitation) {
+    if (busy) return
+    setBusy(true)
+    const res = await fetch(`/api/invitations/${inv.id}`, { method: 'POST' })
+    const data = await res.json().catch(() => ({}))
+    setBusy(false)
+    if (!res.ok || !data.invitation?.setupToken) { toast(data.error ?? 'Unable to send a new link', 'error'); return }
+    setResendLink({ invitationId: inv.id, url: `${window.location.origin}/setup/${data.invitation.setupToken}`, expiresAt: data.invitation.expiresAt })
+    toast('New link sent', 'success')
+    load()
+  }
+
+  async function revokeInvitation(inv: AdminInvitation) {
+    if (!window.confirm(`Revoke the invitation for ${inv.name} (${inv.email})? The invitee will no longer be able to set up an account.`)) return
+    const res = await fetch(`/api/invitations/${inv.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setInvitations(invitations.filter((item) => item.id !== inv.id))
+      toast('Invitation revoked', 'success')
+    } else toast('Unable to revoke invitation', 'error')
+  }
+
+  function handleInvitationAction(inv: AdminInvitation, action: string) {
+    if (action === 'resend') resendInvitation(inv)
+    if (action === 'revoke') revokeInvitation(inv)
+  }
+
+  return <AdminShell active="users">
+    <div className="page-wrap">
+      <div className="page-heading">
+        <div><p className="eyebrow">Platform administration</p><h1>Pending invitations</h1><p className="muted">Invited users who have not yet set up their account.</p></div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="secondary-button" onClick={() => router.push('/admin/users')}><UsersRound size={16} /> Back to users</button>
+          <button className="secondary-button" onClick={load}><RefreshCw size={16} /> Refresh</button>
+        </div>
+      </div>
+
+      <div className="panel" style={{ overflow: 'hidden', padding: 0 }}>
+        {resendLink && <div style={{ padding: 12, borderBottom: '1px solid var(--line)' }}><SetupLinkCard label="New setup link sent" setupUrl={resendLink.url} invitationId={resendLink.invitationId} expiresAt={resendLink.expiresAt} /></div>}
+        {loading ? <p style={{ padding: 16, margin: 0 }}>Loading...</p> : invitations.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center' }}>
+            <Mail size={28} color="var(--blue)" style={{ marginBottom: 10 }} />
+            <h3>No pending invitations</h3>
+            <p className="muted" style={{ margin: 0 }}>Everyone invited to Atlas has responded.</p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>School</th>
+                  <th>Invited by</th>
+                  <th>Status</th>
+                  <th>Expires</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invitations.map((inv) => (
+                  <tr key={inv.id}>
+                    <td><strong>{inv.name}</strong></td>
+                    <td style={{ color: 'var(--muted)' }}>{inv.email}</td>
+                    <td><span className={`badge ${roleBadge(inv.role)}`}>{formatRole(inv.role)}</span></td>
+                    <td>{inv.schoolName || '—'}</td>
+                    <td>{inv.invitedBy}</td>
+                    <td><span className={`badge ${invitationStatusBadge(inv.status)}`}>{inv.status}</span></td>
+                    <td>{inv.status === 'REVOKED' ? '—' : new Date(inv.expiresAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                    <td>
+                      <select
+                        aria-label={`Actions for invitation to ${inv.name}`}
+                        defaultValue=""
+                        style={{ ...selectStyle, minWidth: 140, height: 36, fontSize: 12 }}
+                        onChange={(event) => {
+                          const action = event.currentTarget.value
+                          event.currentTarget.value = ''
+                          handleInvitationAction(inv, action)
+                        }}
+                      >
+                        <option value="" disabled>Choose action</option>
+                        <option value="resend">Resend link</option>
+                        {inv.status !== 'REVOKED' && <option value="revoke">Revoke</option>}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  </AdminShell>
+}
+
+function formatRole(role: string) {
+  switch (role) {
+    case 'ATLAS_ADMIN': return 'Atlas Admin'
+    case 'INSTRUCTOR': return 'Instructor'
+    case 'HEADTEACHER': return 'Headteacher'
+    case 'TEACHER': return 'Teacher'
+    default: return role
+  }
+}
+
+function roleBadge(role: string) {
+  switch (role) {
+    case 'ATLAS_ADMIN': return 'badge-admin'
+    case 'INSTRUCTOR': return 'badge-headteacher'
+    case 'HEADTEACHER': return 'badge-headteacher'
+    default: return 'badge-teacher'
+  }
+}
+
+function invitationStatusBadge(status: string) {
+  switch (status) {
+    case 'PENDING': return 'badge-pending'
+    case 'EXPIRED':
+    case 'REVOKED': return 'badge-inactive'
+    default: return ''
+  }
+}
+
+const selectStyle: React.CSSProperties = {
+  height: 40, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#fff', minWidth: 140,
+}
