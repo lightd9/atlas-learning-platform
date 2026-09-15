@@ -238,7 +238,7 @@ export default function TeachersPage() {
                             {isInvitation && m.invitationStatus === 'EXPIRED' && (
                               <button className="text-button" onClick={() => handleResend(m.id)}>Resend</button>
                             )}
-                            <button className="text-button" onClick={() => deleteMember(m)} title="Delete" style={{ color: '#e53e3e' }}><Trash2 size={14} /></button>
+                            <button className="text-button" onClick={() => deleteMember(m)} title="Delete" style={{ ...iconButtonStyle, color: '#e53e3e' }}><Trash2 size={14} /></button>
                           </div>
                         )}
                       </td>
@@ -258,3 +258,4 @@ export default function TeachersPage() {
 const inputStyle: React.CSSProperties = {
   height: 40, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#fff',
 }
+const iconButtonStyle: React.CSSProperties = { width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', borderRadius: 6 }
