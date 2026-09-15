@@ -202,15 +202,17 @@ export default function TeachersPage() {
         <div className="panel-head">
           <div><p className="eyebrow">Your school</p><h3>All teachers</h3></div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button className="secondary-button" style={selectMode ? { borderColor: '#2b5ea2', color: '#2b5ea2' } : undefined} onClick={toggleSelect}><CheckSquare size={15} /> {selectMode ? 'Selecting…' : 'Select'}</button>
             <div className="table-search"><Search size={16} /> <input placeholder="Search teachers" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
           </div>
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <button className="secondary-button" style={selectMode ? { ...compactSelectStyle, borderColor: '#2b5ea2', color: '#2b5ea2' } : compactSelectStyle} onClick={toggleSelect}><CheckSquare size={14} /> {selectMode ? 'Selecting…' : 'Select'}</button>
         </div>
         <div className="table-wrap">
           {loading
             ? <p className="muted" style={{ padding: 20 }}>Loading teachers...</p>
             : <table>
-              <thead><tr>{selectMode && <th style={{ width: 36 }}><input type="checkbox" checked={filtered.some((m) => !isProtectedMember(m)) && selectedIds.length === filtered.filter((m) => !isProtectedMember(m)).length && filtered.length > 0} onChange={(e) => setSelectedIds(e.target.checked ? filtered.filter((m) => !isProtectedMember(m)).map((m) => m.id) : [])} aria-label="Select all teachers" /></th>}<th>Teacher</th><th>Role</th><th>Status</th><th>Last active</th><th>Actions</th><th /></tr></thead>
+              <thead><tr>{selectMode && <th style={{ width: 36 }}><input type="checkbox" checked={filtered.some((m) => !isProtectedMember(m)) && selectedIds.length === filtered.filter((m) => !isProtectedMember(m)).length && filtered.length > 0} onChange={(e) => setSelectedIds(e.target.checked ? filtered.filter((m) => !isProtectedMember(m)).map((m) => m.id) : [])} aria-label="Select all teachers" /></th>}<th>Teacher</th><th>Email</th><th>Role</th><th>Status</th><th>Last active</th><th>Actions</th></tr></thead>
               <tbody>
                 {filtered.length === 0
                   ? <tr><td colSpan={selectMode ? 7 : 6} style={{ textAlign: 'center', padding: 24, color: '#98a2b3' }}>No teachers found</td></tr>
@@ -222,13 +224,14 @@ export default function TeachersPage() {
                     const initials = m.name.split(' ').map((n: string) => n[0]).join('')
                     return <tr key={m.id}>
                       {selectMode && <td>{protectedRow ? null : <input type="checkbox" checked={selectedIds.includes(m.id)} onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, m.id] : selectedIds.filter((id) => id !== m.id))} aria-label={`Select ${m.name}`} />}</td>}
-                      <td><span className="table-avatar">{initials}</span><strong>{m.name}</strong><br /><span style={{ fontSize: 11, color: '#98a2b3' }}>{m.email}</span></td>
+                      <td><span className="table-avatar">{initials}</span><strong>{m.name}</strong></td>
+                      <td>{m.email}</td>
                       <td>{roleLabel}</td>
                       <td><span className={`status ${isInvitation ? 'pending' : m.status === 'ACTIVE' ? 'success' : 'error'}`}><i />{statusLabel}</span></td>
                       <td>{isInvitation ? '—' : formatWhen(m.lastActiveAt)}</td>
                       <td>
                         {isInvitation && m.invitationStatus !== 'EXPIRED' && (
-                          <div style={{ display: 'flex', gap: 4 }}>
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                             <button className="text-button" onClick={() => handleResend(m.id)} title="Resend invitation"><RefreshCw size={14} /></button>
                             <button className="text-button" onClick={() => handleRevoke(m.id)} title="Revoke invitation" style={{ color: '#e53e3e' }}><Ban size={14} /></button>
                           </div>
@@ -236,8 +239,10 @@ export default function TeachersPage() {
                         {isInvitation && m.invitationStatus === 'EXPIRED' && (
                           <button className="text-button" onClick={() => handleResend(m.id)}>Resend</button>
                         )}
+                        {!isInvitation && !protectedRow && (
+                          <button className="text-button" onClick={() => deleteMember(m)} title="Delete" style={{ ...iconButtonStyle, color: '#e53e3e' }}><Trash2 size={14} /></button>
+                        )}
                       </td>
-                      <td>{protectedRow ? null : <button className="text-button" onClick={() => deleteMember(m)} title="Delete" style={{ ...iconButtonStyle, color: '#e53e3e' }}><Trash2 size={14} /></button>}</td>
                     </tr>
                   })
                 }
@@ -255,3 +260,4 @@ const inputStyle: React.CSSProperties = {
   height: 40, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#fff',
 }
 const iconButtonStyle: React.CSSProperties = { width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', borderRadius: 6 }
+const compactSelectStyle: React.CSSProperties = { height: 28, fontSize: 12, padding: '0 10px' }
