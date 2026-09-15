@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Ban, Building2, FileUp, Mail, Pencil, Plus, RefreshCw, Save, Users, X } from 'lucide-react'
+import { ArrowLeft, Ban, Building2, FileUp, Mail, Pencil, Plus, RefreshCw, Save, Trash2, Users, X } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { useToast } from '@/components/Toast'
 
@@ -36,6 +36,9 @@ export default function AdminSchoolDetailPage({ params }: { params: Promise<{ sc
   const [editingProfile, setEditingProfile] = useState(false)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileForm, setProfileForm] = useState({ name: '', slug: '', headteacherId: '' })
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+  const [selectedInvitationIds, setSelectedInvitationIds] = useState<string[]>([])
+  const [deleting, setDeleting] = useState(false)
 
   async function load() {
     const [schoolRes, courseRes] = await Promise.all([fetch(`/api/admin/schools/${schoolId}`), fetch('/api/admin/courses')])
@@ -70,6 +73,20 @@ export default function AdminSchoolDetailPage({ params }: { params: Promise<{ sc
 
   async function resend(id: string) { const response = await fetch(`/api/invitations/${id}`, { method: 'POST' }); setMessage(response.ok ? 'Invitation resent.' : 'Unable to resend invitation.'); toast(response.ok ? 'Invitation resent' : 'Unable to resend invitation', response.ok ? 'success' : 'error'); load() }
   async function revoke(id: string) { const response = await fetch(`/api/invitations/${id}`, { method: 'DELETE' }); setMessage(response.ok ? 'Invitation revoked.' : 'Unable to revoke invitation.'); toast(response.ok ? 'Invitation revoked' : 'Unable to revoke invitation', response.ok ? 'success' : 'error'); load() }
+
+  async function deleteMembers(userIds: string[], invitationIds: string[]) {
+    if (userIds.length === 0 && invitationIds.length === 0) return
+    const count = userIds.length + invitationIds.length
+    if (!window.confirm(`Delete ${count} selected ${count === 1 ? 'member' : 'members'}? Active accounts, their course progress and sent invitations are permanently removed.`)) return
+    setDeleting(true)
+    const res = await fetch('/api/admin/users/bulk-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userIds, invitationIds }) })
+    setDeleting(false)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { toast(data.error ?? 'Unable to delete', 'error'); return }
+    setSelectedUserIds([]); setSelectedInvitationIds([])
+    toast('Deleted', 'success')
+    load()
+  }
 
   async function saveCourseSelection() {
     setCourseSaving(true); setMessage('')
@@ -118,10 +135,10 @@ export default function AdminSchoolDetailPage({ params }: { params: Promise<{ sc
       </div>
 
       <section className="panel" style={{ marginBottom: 24 }}>
-        <div className="panel-head"><div><p className="eyebrow">School team</p><h2>Teachers and headteacher</h2></div><div style={{ display: 'flex', gap: 8 }}><button className="secondary-button" onClick={() => router.push(`/school/teachers/import?schoolId=${schoolId}`)}><FileUp size={16} /> Bulk upload CSV</button><button className="primary-button" onClick={() => setShowInvite(!showInvite)}><Plus size={16} /> Add teacher</button></div></div>
+        <div className="panel-head"><div><p className="eyebrow">School team</p><h2>Teachers and headteacher</h2></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{selectedUserIds.length > 0 && <button className="secondary-button" style={{ color: '#b42318', borderColor: '#fecdca' }} onClick={() => deleteMembers(selectedUserIds, [])} disabled={deleting}><Trash2 size={16} /> Delete selected ({selectedUserIds.length})</button>}<button className="secondary-button" onClick={() => router.push(`/school/teachers/import?schoolId=${schoolId}`)}><FileUp size={16} /> Bulk upload CSV</button><button className="primary-button" onClick={() => setShowInvite(!showInvite)}><Plus size={16} /> Add teacher</button></div></div>
         {showInvite && <form onSubmit={inviteTeacher} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}><input aria-label="Teacher name" placeholder="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required style={inputStyle} /><input aria-label="Teacher email" type="email" placeholder="Email address" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required style={inputStyle} /><button className="primary-button" type="submit">Send invite</button>{error && <span role="alert" style={{ color: '#b42318', fontSize: 12 }}>{error}</span>}</form>}
-        <div className="table-wrap"><table className="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last active</th></tr></thead><tbody>{school.users.map((user) => <tr key={user.id}><td><strong>{user.name}</strong></td><td>{user.email}</td><td>{user.role === 'HEADTEACHER' ? 'Headteacher' : user.role === 'INSTRUCTOR' ? 'Instructor' : user.role === 'ATLAS_ADMIN' ? 'Atlas Admin' : 'Teacher'}</td><td><span className={`badge ${user.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}`}>{user.status}</span></td><td>{user.lastActiveAt ? new Date(user.lastActiveAt).toLocaleDateString('en-GB') : '—'}</td></tr>)}</tbody></table></div>
-        {school.invitations.length > 0 && <div style={{ marginTop: 20 }}><h3>Pending invitations</h3><div className="table-wrap"><table className="admin-table"><tbody>{school.invitations.map((invite) => <tr key={invite.id}><td>{invite.name}</td><td>{invite.email}</td><td><span className="badge badge-pending">{invite.status}</span></td><td><button className="text-button" onClick={() => resend(invite.id)}><RefreshCw size={14} /> Resend</button><button className="text-button" onClick={() => revoke(invite.id)} style={{ color: '#b42318', marginLeft: 8 }}><Ban size={14} /> Revoke</button></td></tr>)}</tbody></table></div></div>}
+        <div className="table-wrap"><table className="admin-table"><thead><tr><th style={{ width: 36 }}><input type="checkbox" checked={selectedUserIds.length === school.users.filter((u) => u.id !== session?.user?.id).length && school.users.length > 0} onChange={(e) => setSelectedUserIds(e.target.checked ? school.users.filter((u) => u.id !== session?.user?.id).map((u) => u.id) : [])} aria-label="Select all team members" /></th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last active</th><th /></tr></thead><tbody>{school.users.map((user) => <tr key={user.id}><td>{user.id === session?.user?.id ? null : <input type="checkbox" checked={selectedUserIds.includes(user.id)} onChange={(e) => setSelectedUserIds(e.target.checked ? [...selectedUserIds, user.id] : selectedUserIds.filter((id) => id !== user.id))} aria-label={`Select ${user.name}`} />}</td><td><strong>{user.name}</strong></td><td>{user.email}</td><td>{user.role === 'HEADTEACHER' ? 'Headteacher' : user.role === 'INSTRUCTOR' ? 'Instructor' : user.role === 'ATLAS_ADMIN' ? 'Atlas Admin' : 'Teacher'}</td><td><span className={`badge ${user.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}`}>{user.status}</span></td><td>{user.lastActiveAt ? new Date(user.lastActiveAt).toLocaleDateString('en-GB') : '—'}</td><td>{user.id === session?.user?.id ? <span className="muted" style={{ fontSize: 12 }}>You</span> : <button className="text-button" onClick={() => deleteMembers([user.id], [])} style={{ color: '#b42318' }} title={`Delete ${user.name}`}><Trash2 size={14} /></button>}</td></tr>)}</tbody></table></div>
+        {school.invitations.length > 0 && <div style={{ marginTop: 20 }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}><h3 style={{ margin: 0 }}>Pending invitations</h3>{selectedInvitationIds.length > 0 && <button className="secondary-button" style={{ color: '#b42318', borderColor: '#fecdca', height: 34, fontSize: 12 }} onClick={() => deleteMembers([], selectedInvitationIds)} disabled={deleting}><Trash2 size={14} /> Delete selected ({selectedInvitationIds.length})</button>}</div><div className="table-wrap"><table className="admin-table"><thead><tr><th style={{ width: 36 }}><input type="checkbox" checked={selectedInvitationIds.length === school.invitations.length} onChange={(e) => setSelectedInvitationIds(e.target.checked ? school.invitations.map((inv) => inv.id) : [])} aria-label="Select all invitations" /></th><th>Name</th><th>Email</th><th>Status</th><th /></tr></thead><tbody>{school.invitations.map((invite) => <tr key={invite.id}><td><input type="checkbox" checked={selectedInvitationIds.includes(invite.id)} onChange={(e) => setSelectedInvitationIds(e.target.checked ? [...selectedInvitationIds, invite.id] : selectedInvitationIds.filter((id) => id !== invite.id))} aria-label={`Select invitation for ${invite.name}`} /></td><td>{invite.name}</td><td>{invite.email}</td><td><span className="badge badge-pending">{invite.status}</span></td><td><button className="text-button" onClick={() => resend(invite.id)}><RefreshCw size={14} /> Resend</button><button className="text-button" onClick={() => revoke(invite.id)} style={{ color: '#b42318', marginLeft: 8 }}><Ban size={14} /> Revoke</button><button className="text-button" onClick={() => deleteMembers([], [invite.id])} style={{ color: '#b42318', marginLeft: 8 }} title={`Delete invitation for ${invite.name}`}><Trash2 size={14} /></button></td></tr>)}</tbody></table></div></div>}
       </section>
 
       <section className="panel"><div className="panel-head"><div><p className="eyebrow">Course access</p><h2>Courses available to this school</h2><p className="muted">Courses are available globally by default. Select the courses this school should access, then save your changes.</p></div></div>

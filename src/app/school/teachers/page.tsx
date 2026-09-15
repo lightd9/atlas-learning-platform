@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileUp, MoreHorizontal, Search, Users, Plus, X, RefreshCw, Ban } from 'lucide-react'
+import { FileUp, MoreHorizontal, Search, Trash2, Users, Plus, X, RefreshCw, Ban } from 'lucide-react'
 import AuthShell from '@/components/AuthShell'
 import { useToast } from '@/components/Toast'
 
@@ -53,6 +53,8 @@ export default function TeachersPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteError, setInviteError] = useState('')
   const [inviteSending, setInviteSending] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [deleting, setDeleting] = useState(false)
 
   function loadData() {
     setLoading(true)
@@ -97,6 +99,40 @@ export default function TeachersPage() {
     const response = await fetch(`/api/invitations/${id}`, { method: 'DELETE' })
     toast(response.ok ? 'Invitation revoked' : 'Unable to revoke invitation', response.ok ? 'success' : 'error')
     loadData()
+  }
+
+  function isProtectedMember(m: { type: 'teacher' | 'invitation'; role?: string }) {
+    return m.type === 'teacher' && m.role === 'HEADTEACHER'
+  }
+
+  async function deleteMembers(userIds: string[], invitationIds: string[]) {
+    if (userIds.length === 0 && invitationIds.length === 0) return
+    const count = userIds.length + invitationIds.length
+    if (!window.confirm(`Delete ${count} selected ${count === 1 ? 'teacher' : 'teachers'}? Active accounts, their course progress and sent invitations are permanently removed.`)) return
+    setDeleting(true)
+    const res = await fetch('/api/school/teachers/bulk-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userIds, invitationIds }),
+    })
+    setDeleting(false)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { toast(data.error ?? 'Unable to delete', 'error'); return }
+    setSelectedIds([])
+    toast('Deleted', 'success')
+    loadData()
+  }
+
+  function deleteMember(m: { type: 'teacher' | 'invitation'; id: string }) {
+    if (m.type === 'teacher') deleteMembers([m.id], [])
+    else deleteMembers([], [m.id])
+  }
+
+  function deleteSelected() {
+    const selectedMembers = filtered.filter((m) => selectedIds.includes(m.id))
+    const userIds = selectedMembers.filter((m) => m.type === 'teacher').map((m) => m.id)
+    const invitationIds = selectedMembers.filter((m) => m.type === 'invitation').map((m) => m.id)
+    deleteMembers(userIds, invitationIds)
   }
 
   const allMembers = [
@@ -161,35 +197,45 @@ export default function TeachersPage() {
       <section className="panel teacher-table">
         <div className="panel-head">
           <div><p className="eyebrow">Your school</p><h3>All teachers</h3></div>
-          <div className="table-search"><Search size={16} /> <input placeholder="Search teachers" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {selectedIds.length > 0 && <button className="secondary-button" style={{ color: '#e53e3e', borderColor: '#feb2b2' }} onClick={deleteSelected} disabled={deleting}><Trash2 size={15} /> Delete selected ({selectedIds.length})</button>}
+            <div className="table-search"><Search size={16} /> <input placeholder="Search teachers" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+          </div>
         </div>
         <div className="table-wrap">
           {loading
             ? <p className="muted" style={{ padding: 20 }}>Loading teachers...</p>
             : <table>
-              <thead><tr><th>Teacher</th><th>Role</th><th>Status</th><th>Last active</th><th /></tr></thead>
+              <thead><tr><th style={{ width: 36 }}><input type="checkbox" checked={filtered.some((m) => !isProtectedMember(m)) && selectedIds.length === filtered.filter((m) => !isProtectedMember(m)).length && filtered.length > 0} onChange={(e) => setSelectedIds(e.target.checked ? filtered.filter((m) => !isProtectedMember(m)).map((m) => m.id) : [])} aria-label="Select all teachers" /></th><th>Teacher</th><th>Role</th><th>Status</th><th>Last active</th><th /></tr></thead>
               <tbody>
                 {filtered.length === 0
-                  ? <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: '#98a2b3' }}>No teachers found</td></tr>
+                  ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: '#98a2b3' }}>No teachers found</td></tr>
                   : filtered.map((m) => {
                     const roleLabel = m.role === 'HEADTEACHER' ? 'Headteacher' : m.role === 'ATLAS_ADMIN' ? 'Atlas Admin' : 'Teacher'
                     const isInvitation = 'invitationStatus' in m && m.invitationStatus
                     const statusLabel = isInvitation ? (m.invitationStatus === 'EXPIRED' ? 'Expired' : 'Pending invite') : (m.status === 'ACTIVE' ? 'Active' : 'Disabled')
+                    const protectedRow = isProtectedMember(m)
                     const initials = m.name.split(' ').map((n: string) => n[0]).join('')
                     return <tr key={m.id}>
+                      <td>{protectedRow ? null : <input type="checkbox" checked={selectedIds.includes(m.id)} onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, m.id] : selectedIds.filter((id) => id !== m.id))} aria-label={`Select ${m.name}`} />}</td>
                       <td><span className="table-avatar">{initials}</span><strong>{m.name}</strong><br /><span style={{ fontSize: 11, color: '#98a2b3' }}>{m.email}</span></td>
                       <td>{roleLabel}</td>
                       <td><span className={`status ${isInvitation ? 'pending' : m.status === 'ACTIVE' ? 'success' : 'error'}`}><i />{statusLabel}</span></td>
                       <td>{isInvitation ? '—' : formatWhen(m.lastActiveAt)}</td>
                       <td>
-                        {isInvitation && m.invitationStatus !== 'EXPIRED' && (
+                        {protectedRow ? null : (
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <button className="text-button" onClick={() => handleResend(m.id)} title="Resend invitation"><RefreshCw size={14} /></button>
-                            <button className="text-button" onClick={() => handleRevoke(m.id)} title="Revoke invitation" style={{ color: '#e53e3e' }}><Ban size={14} /></button>
+                            {isInvitation && m.invitationStatus !== 'EXPIRED' && (
+                              <>
+                                <button className="text-button" onClick={() => handleResend(m.id)} title="Resend invitation"><RefreshCw size={14} /></button>
+                                <button className="text-button" onClick={() => handleRevoke(m.id)} title="Revoke invitation" style={{ color: '#e53e3e' }}><Ban size={14} /></button>
+                              </>
+                            )}
+                            {isInvitation && m.invitationStatus === 'EXPIRED' && (
+                              <button className="text-button" onClick={() => handleResend(m.id)}>Resend</button>
+                            )}
+                            <button className="text-button" onClick={() => deleteMember(m)} title="Delete" style={{ color: '#e53e3e' }}><Trash2 size={14} /></button>
                           </div>
-                        )}
-                        {isInvitation && m.invitationStatus === 'EXPIRED' && (
-                          <button className="text-button" onClick={() => handleResend(m.id)}>Resend</button>
                         )}
                       </td>
                     </tr>
