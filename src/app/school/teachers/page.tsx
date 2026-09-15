@@ -261,4 +261,4 @@ const inputStyle: React.CSSProperties = {
 }
 const iconButtonStyle: React.CSSProperties = { width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', borderRadius: 6 }
 const compactSelectStyle: React.CSSProperties = { height: 28, fontSize: 12, padding: '0 10px' }
-const avatarInlineStyle: React.CSSProperties = { verticalAlign: 'middle', marginRight: 10 }
+const avatarInlineStyle: React.CSSProperties = { display: 'inline-grid', verticalAlign: 'middle', marginRight: 10 }
