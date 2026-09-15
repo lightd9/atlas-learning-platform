@@ -224,7 +224,7 @@ export default function TeachersPage() {
                     const initials = m.name.split(' ').map((n: string) => n[0]).join('')
                     return <tr key={m.id}>
                       {selectMode && <td>{protectedRow ? null : <input type="checkbox" checked={selectedIds.includes(m.id)} onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, m.id] : selectedIds.filter((id) => id !== m.id))} aria-label={`Select ${m.name}`} />}</td>}
-                      <td><span className="table-avatar">{initials}</span><strong>{m.name}</strong></td>
+                      <td style={{ whiteSpace: 'nowrap' }}><span className="table-avatar" style={avatarInlineStyle}>{initials}</span><strong>{m.name}</strong></td>
                       <td>{m.email}</td>
                       <td>{roleLabel}</td>
                       <td><span className={`status ${isInvitation ? 'pending' : m.status === 'ACTIVE' ? 'success' : 'error'}`}><i />{statusLabel}</span></td>
@@ -261,3 +261,4 @@ const inputStyle: React.CSSProperties = {
 }
 const iconButtonStyle: React.CSSProperties = { width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', borderRadius: 6 }
 const compactSelectStyle: React.CSSProperties = { height: 28, fontSize: 12, padding: '0 10px' }
+const avatarInlineStyle: React.CSSProperties = { verticalAlign: 'middle', marginRight: 10 }
