@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileUp, MoreHorizontal, Search, Trash2, Users, Plus, X, RefreshCw, Ban } from 'lucide-react'
+import { CheckSquare, FileUp, MoreHorizontal, Search, Trash2, Users, Plus, X, RefreshCw, Ban } from 'lucide-react'
 import AuthShell from '@/components/AuthShell'
 import { useToast } from '@/components/Toast'
 
@@ -55,6 +55,7 @@ export default function TeachersPage() {
   const [inviteSending, setInviteSending] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [deleting, setDeleting] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
 
   function loadData() {
     setLoading(true)
@@ -135,6 +136,9 @@ export default function TeachersPage() {
     deleteMembers(userIds, invitationIds)
   }
 
+  function toggleSelect() { setSelectedIds([]); setSelectMode((v) => !v) }
+  function exitSelect() { setSelectedIds([]); setSelectMode(false) }
+
   const allMembers = [
     ...teachers.map((t) => ({ type: 'teacher' as const, ...t })),
     ...invitations.filter((i) => i.status === 'PENDING' || i.status === 'EXPIRED').map((i) => ({
@@ -198,7 +202,7 @@ export default function TeachersPage() {
         <div className="panel-head">
           <div><p className="eyebrow">Your school</p><h3>All teachers</h3></div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            {selectedIds.length > 0 && <button className="secondary-button" style={{ color: '#e53e3e', borderColor: '#feb2b2' }} onClick={deleteSelected} disabled={deleting}><Trash2 size={15} /> Delete selected ({selectedIds.length})</button>}
+            <button className="secondary-button" style={selectMode ? { borderColor: '#2b5ea2', color: '#2b5ea2' } : undefined} onClick={toggleSelect}><CheckSquare size={15} /> {selectMode ? 'Selecting…' : 'Select'}</button>
             <div className="table-search"><Search size={16} /> <input placeholder="Search teachers" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
           </div>
         </div>
@@ -206,10 +210,10 @@ export default function TeachersPage() {
           {loading
             ? <p className="muted" style={{ padding: 20 }}>Loading teachers...</p>
             : <table>
-              <thead><tr><th style={{ width: 36 }}><input type="checkbox" checked={filtered.some((m) => !isProtectedMember(m)) && selectedIds.length === filtered.filter((m) => !isProtectedMember(m)).length && filtered.length > 0} onChange={(e) => setSelectedIds(e.target.checked ? filtered.filter((m) => !isProtectedMember(m)).map((m) => m.id) : [])} aria-label="Select all teachers" /></th><th>Teacher</th><th>Role</th><th>Status</th><th>Last active</th><th /></tr></thead>
+              <thead><tr>{selectMode && <th style={{ width: 36 }}><input type="checkbox" checked={filtered.some((m) => !isProtectedMember(m)) && selectedIds.length === filtered.filter((m) => !isProtectedMember(m)).length && filtered.length > 0} onChange={(e) => setSelectedIds(e.target.checked ? filtered.filter((m) => !isProtectedMember(m)).map((m) => m.id) : [])} aria-label="Select all teachers" /></th>}<th>Teacher</th><th>Role</th><th>Status</th><th>Last active</th><th /></tr></thead>
               <tbody>
                 {filtered.length === 0
-                  ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: '#98a2b3' }}>No teachers found</td></tr>
+                  ? <tr><td colSpan={selectMode ? 6 : 5} style={{ textAlign: 'center', padding: 24, color: '#98a2b3' }}>No teachers found</td></tr>
                   : filtered.map((m) => {
                     const roleLabel = m.role === 'HEADTEACHER' ? 'Headteacher' : m.role === 'ATLAS_ADMIN' ? 'Atlas Admin' : 'Teacher'
                     const isInvitation = 'invitationStatus' in m && m.invitationStatus
@@ -217,7 +221,7 @@ export default function TeachersPage() {
                     const protectedRow = isProtectedMember(m)
                     const initials = m.name.split(' ').map((n: string) => n[0]).join('')
                     return <tr key={m.id}>
-                      <td>{protectedRow ? null : <input type="checkbox" checked={selectedIds.includes(m.id)} onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, m.id] : selectedIds.filter((id) => id !== m.id))} aria-label={`Select ${m.name}`} />}</td>
+                      {selectMode && <td>{protectedRow ? null : <input type="checkbox" checked={selectedIds.includes(m.id)} onChange={(e) => setSelectedIds(e.target.checked ? [...selectedIds, m.id] : selectedIds.filter((id) => id !== m.id))} aria-label={`Select ${m.name}`} />}</td>}
                       <td><span className="table-avatar">{initials}</span><strong>{m.name}</strong><br /><span style={{ fontSize: 11, color: '#98a2b3' }}>{m.email}</span></td>
                       <td>{roleLabel}</td>
                       <td><span className={`status ${isInvitation ? 'pending' : m.status === 'ACTIVE' ? 'success' : 'error'}`}><i />{statusLabel}</span></td>
@@ -245,6 +249,7 @@ export default function TeachersPage() {
             </table>
           }
         </div>
+        {selectMode && <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '12px 16px' }}><button className="secondary-button" style={{ color: '#e53e3e', borderColor: '#feb2b2' }} onClick={deleteSelected} disabled={deleting || selectedIds.length === 0}><Trash2 size={14} /> Delete selected ({selectedIds.length})</button><button className="secondary-button" onClick={exitSelect}>Done</button></div>}
       </section>
     </div>
   </AuthShell>
