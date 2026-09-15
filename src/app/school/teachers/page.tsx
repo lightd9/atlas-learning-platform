@@ -210,10 +210,10 @@ export default function TeachersPage() {
           {loading
             ? <p className="muted" style={{ padding: 20 }}>Loading teachers...</p>
             : <table>
-              <thead><tr>{selectMode && <th style={{ width: 36 }}><input type="checkbox" checked={filtered.some((m) => !isProtectedMember(m)) && selectedIds.length === filtered.filter((m) => !isProtectedMember(m)).length && filtered.length > 0} onChange={(e) => setSelectedIds(e.target.checked ? filtered.filter((m) => !isProtectedMember(m)).map((m) => m.id) : [])} aria-label="Select all teachers" /></th>}<th>Teacher</th><th>Role</th><th>Status</th><th>Last active</th><th /></tr></thead>
+              <thead><tr>{selectMode && <th style={{ width: 36 }}><input type="checkbox" checked={filtered.some((m) => !isProtectedMember(m)) && selectedIds.length === filtered.filter((m) => !isProtectedMember(m)).length && filtered.length > 0} onChange={(e) => setSelectedIds(e.target.checked ? filtered.filter((m) => !isProtectedMember(m)).map((m) => m.id) : [])} aria-label="Select all teachers" /></th>}<th>Teacher</th><th>Role</th><th>Status</th><th>Last active</th><th>Actions</th><th /></tr></thead>
               <tbody>
                 {filtered.length === 0
-                  ? <tr><td colSpan={selectMode ? 6 : 5} style={{ textAlign: 'center', padding: 24, color: '#98a2b3' }}>No teachers found</td></tr>
+                  ? <tr><td colSpan={selectMode ? 7 : 6} style={{ textAlign: 'center', padding: 24, color: '#98a2b3' }}>No teachers found</td></tr>
                   : filtered.map((m) => {
                     const roleLabel = m.role === 'HEADTEACHER' ? 'Headteacher' : m.role === 'ATLAS_ADMIN' ? 'Atlas Admin' : 'Teacher'
                     const isInvitation = 'invitationStatus' in m && m.invitationStatus
@@ -227,21 +227,17 @@ export default function TeachersPage() {
                       <td><span className={`status ${isInvitation ? 'pending' : m.status === 'ACTIVE' ? 'success' : 'error'}`}><i />{statusLabel}</span></td>
                       <td>{isInvitation ? '—' : formatWhen(m.lastActiveAt)}</td>
                       <td>
-                        {protectedRow ? null : (
+                        {isInvitation && m.invitationStatus !== 'EXPIRED' && (
                           <div style={{ display: 'flex', gap: 4 }}>
-                            {isInvitation && m.invitationStatus !== 'EXPIRED' && (
-                              <>
-                                <button className="text-button" onClick={() => handleResend(m.id)} title="Resend invitation"><RefreshCw size={14} /></button>
-                                <button className="text-button" onClick={() => handleRevoke(m.id)} title="Revoke invitation" style={{ color: '#e53e3e' }}><Ban size={14} /></button>
-                              </>
-                            )}
-                            {isInvitation && m.invitationStatus === 'EXPIRED' && (
-                              <button className="text-button" onClick={() => handleResend(m.id)}>Resend</button>
-                            )}
-                            <button className="text-button" onClick={() => deleteMember(m)} title="Delete" style={{ ...iconButtonStyle, color: '#e53e3e' }}><Trash2 size={14} /></button>
+                            <button className="text-button" onClick={() => handleResend(m.id)} title="Resend invitation"><RefreshCw size={14} /></button>
+                            <button className="text-button" onClick={() => handleRevoke(m.id)} title="Revoke invitation" style={{ color: '#e53e3e' }}><Ban size={14} /></button>
                           </div>
                         )}
+                        {isInvitation && m.invitationStatus === 'EXPIRED' && (
+                          <button className="text-button" onClick={() => handleResend(m.id)}>Resend</button>
+                        )}
                       </td>
+                      <td>{protectedRow ? null : <button className="text-button" onClick={() => deleteMember(m)} title="Delete" style={{ ...iconButtonStyle, color: '#e53e3e' }}><Trash2 size={14} /></button>}</td>
                     </tr>
                   })
                 }
