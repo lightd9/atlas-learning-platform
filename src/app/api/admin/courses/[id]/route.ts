@@ -4,14 +4,16 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { apiErrorResponse } from '@/lib/api-errors'
 
+const cleanNullable = (value: unknown) => (value === '' ? null : value)
+
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).optional(),
   durationMinutes: z.number().int().positive().optional(),
   published: z.boolean().optional(),
-  muxPlaybackId: z.string().nullable().optional(),
-  sectionId: z.string().nullable().optional(),
-  notes: z.string().max(10000).nullable().optional(),
+  muxPlaybackId: z.preprocess(cleanNullable, z.string().nullable().optional()),
+  sectionId: z.preprocess(cleanNullable, z.string().nullable().optional()),
+  notes: z.preprocess(cleanNullable, z.string().max(10000).nullable().optional()),
 })
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {

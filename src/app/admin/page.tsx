@@ -7,6 +7,7 @@ import { Plus, BarChart3, AlertTriangle, Eye, FileEdit, CheckCircle2, BookOpen }
 import AdminShell from '@/components/AdminShell'
 import Metric from '@/components/Metric'
 import CourseCard from '@/components/CourseCard'
+import CourseMarquee from '@/components/CourseMarquee'
 import type { AdminCourse } from '@/types/api'
 
 export default function AdminDashboardPage() {
@@ -51,10 +52,10 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="section-head"><div><p className="eyebrow">Content pulse</p><h2>Recent courses</h2></div><button className="text-button" onClick={() => router.push('/admin/courses')}>View course management <Eye size={15} /></button></div>
-      {data.recentCourses?.length > 0 ? <div className="course-grid" style={{ marginBottom: 24 }}>{data.recentCourses.map((course: any, index: number) => <div key={course.id}>
+      {data.recentCourses?.length > 0 ? <CourseMarquee style={{ marginBottom: 24 }}>{data.recentCourses.map((course: any, index: number) => <div key={course.id} className="course-marquee-item">
         <CourseCard course={{ id: course.id, title: course.title, description: course.description, label: course.section?.name ?? 'Course', duration: `${course.durationMinutes} min`, lessons: `${course._count.modules} module${course._count.modules === 1 ? '' : 's'}`, tone: ['blue', 'mint', 'lilac', 'peach', 'violet'][index % 5], progress: 0 }} index={index} onClick={() => router.push(`/admin/courses/${course.id}/preview`)} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 4px 0' }}><span className={`badge ${course.published ? 'badge-active' : 'badge-inactive'}`}>{course.published ? 'Published' : 'Draft'}</span><button className="text-button" onClick={() => router.push(`/admin/courses/${course.id}`)}>Edit course</button></div>
-      </div>)}</div> : <div className="panel" style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', marginBottom: 24 }}>No courses created yet. Create your first course to populate the overview.</div>}
+      </div>)}</CourseMarquee> : <div className="panel" style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', marginBottom: 24 }}>No courses created yet. Create your first course to populate the overview.</div>}
       <div className="overview-lower-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
         <div className="panel"><div className="panel-head"><div><p className="eyebrow">Action queue</p><h3>Needs attention</h3></div><AlertTriangle size={20} color="var(--orange)" /></div><p className="muted">{data.activeInvitations} pending invitation{data.activeInvitations === 1 ? '' : 's'} across the platform.</p><p className="muted">{data.incompleteCourses?.length ?? 0} recent course{data.incompleteCourses?.length === 1 ? '' : 's'} need modules and lessons.</p><button className="text-button" onClick={() => router.push('/admin/courses')}>Review content</button></div>
         <div className="panel"><div className="panel-head"><div><p className="eyebrow">Learning activity</p><h3>Platform usage</h3></div><BarChart3 size={20} /></div><p className="muted">{data.totalCompletions} course completions and {Math.round(data.totalLearningMinutes / 60)} hours watched across all schools.</p><button className="text-button" onClick={() => router.push('/admin/analytics')}>Open analytics</button></div>
@@ -89,10 +90,10 @@ function InstructorOverview({ courses, router }: { courses: AdminCourse[]; route
         <button className="text-button" onClick={() => router.push('/admin/courses')}>Open course management <Eye size={15} /></button>
       </div>
 
-      {courses.length > 0 ? <div className="course-grid">{courses.map((course, index) => <div key={course.id}>
+      {courses.length > 0 ? <CourseMarquee>{courses.map((course, index) => <div key={course.id} className="course-marquee-item">
         <CourseCard course={{ id: course.id, title: course.title, description: course.description, label: course.section?.name ?? 'Course', duration: `${course.durationMinutes} min`, lessons: `${course.moduleCount ?? 0} modules`, tone: ['blue', 'mint', 'lilac', 'peach', 'violet'][index % 5], progress: 0 }} index={index} onClick={() => router.push(`/admin/courses/${course.id}`)} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 4px 0' }}><span className={`badge ${course.published ? 'badge-active' : 'badge-inactive'}`}>{course.published ? 'Published by Atlas' : 'Draft'}</span><button className="text-button" onClick={() => router.push(`/admin/courses/${course.id}`)}>Edit course</button></div>
-      </div>)}</div> : <div className="panel" style={{ padding: 36, textAlign: 'center' }}><BookOpen size={28} color="var(--blue)" style={{ marginBottom: 10 }} /><h3>No courses yet</h3><p className="muted">Courses you create will appear here. Start with a title, description and learning structure.</p><button className="primary-button" onClick={() => router.push('/admin/courses')}><Plus size={16} /> Create your first course</button></div>}
+      </div>)}</CourseMarquee> : <div className="panel" style={{ padding: 36, textAlign: 'center' }}><BookOpen size={28} color="var(--blue)" style={{ marginBottom: 10 }} /><h3>No courses yet</h3><p className="muted">Courses you create will appear here. Start with a title, description and learning structure.</p><button className="primary-button" onClick={() => router.push('/admin/courses')}><Plus size={16} /> Create your first course</button></div>}
     </div>
   </AdminShell>
 }

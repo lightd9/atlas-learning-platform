@@ -41,6 +41,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
 
   const lessons = course?.modules?.flatMap((module) => module.lessons) ?? []
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) ?? lessons[0]
+  const activePlaybackId = selectedLesson?.muxPlaybackId ?? course?.muxPlaybackId ?? ''
+  const hasPlaybackId = Boolean(activePlaybackId)
   const lessonProgress = selectedLesson?.progress?.[0]
   const courseProgress = course?.progress?.[0]
   const totalMins = course?.durationMinutes ?? 0
@@ -62,7 +64,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
     <Link className="back-button" href="/courses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 16 }}><ArrowLeft size={16} /> Back to courses</Link>
     {loading ? <div style={{ padding: 40, opacity: .4 }}>Loading course...</div> : !course ? <div role="alert" style={{ padding: 40 }}>{loadError || 'Unable to load course.'}</div> : <>
       <div className="detail-hero"><div><span className={`tag tag-${tones[0]}`}>{course.section?.name ?? 'Course'}</span><h1>{course.title}</h1><p>{course.description} Learn through structured modules and focused video lessons.</p><div className="detail-meta"><span><Clock3 size={16} /> {formatDuration(totalMins * 60)}</span><span><Video size={16} /> {lessons.length} lessons</span><span><ShieldCheck size={16} /> Designed for schools</span>{progressPercent > 0 && <span><CheckCircle2 size={16} /> {progressPercent}% complete</span>}</div></div><div className={`detail-art ${tones[0]}`}><div className="art-shape"><BookOpen size={56} /></div><span>ATLAS<br />LEARNING</span></div></div>
-      <div className="lesson-layout"><div>{selectedLesson?.muxPlaybackId ? <VideoPlayer playbackId={selectedLesson.muxPlaybackId} courseId={courseId} lessonId={selectedLesson.id} initialPosition={lessonProgress?.watchedSeconds || 0} onProgress={handleProgress} /> : <div className="video-stage"><div className="video-placeholder"><div className="play-large"><Play size={26} fill="currentColor" /></div><span>{selectedLesson?.title ?? 'Select a lesson'}</span><small>{selectedLesson ? 'Mux video is not connected for this lesson yet.' : 'Add lessons from the admin course editor.'}</small></div></div>}
+      <div className="lesson-layout"><div>{hasPlaybackId ? <VideoPlayer playbackId={activePlaybackId} courseId={courseId} lessonId={selectedLesson?.id} initialPosition={lessonProgress?.watchedSeconds || 0} onProgress={selectedLesson ? handleProgress : undefined} /> : <div className="video-stage"><div className="video-placeholder"><div className="play-large"><Play size={26} fill="currentColor" /></div><span>{selectedLesson?.title ?? 'No video connected'}</span><small>{selectedLesson ? 'Mux video is not connected for this lesson yet.' : 'This course has no video yet.'}</small></div></div>}
         {progressSaveError && <p role="alert" className="form-error" style={{ marginTop: 12 }}>Progress was not saved: {progressSaveError}</p>}
         {(Boolean(course.notes) || (course.resources?.length ?? 0) > 0) && <div className="panel course-materials" style={{ marginTop: 18 }}>
           {course.notes && <div className="course-notes"><div className="material-heading"><FileText size={18} /><h2>Notes</h2></div><p>{course.notes}</p></div>}

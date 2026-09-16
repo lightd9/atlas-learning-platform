@@ -7,9 +7,9 @@ import { apiErrorResponse } from '@/lib/api-errors'
 const lessonSchema = z.object({
   id: z.string().optional(),
   title: z.string().trim().min(1).max(200),
-  description: z.string().trim().max(500).optional().or(z.literal('')),
+  description: z.string().trim().max(500).nullable().optional(),
   durationSeconds: z.number().int().min(0),
-  muxPlaybackId: z.string().trim().optional().or(z.literal('')),
+  muxPlaybackId: z.string().trim().nullable().optional(),
   sortOrder: z.number().int().min(0),
   published: z.boolean().default(true),
 })
@@ -17,7 +17,7 @@ const lessonSchema = z.object({
 const moduleSchema = z.object({
   id: z.string().optional(),
   title: z.string().trim().min(1).max(200),
-  description: z.string().trim().max(500).optional().or(z.literal('')),
+  description: z.string().trim().max(500).nullable().optional(),
   sortOrder: z.number().int().min(0),
   lessons: z.array(lessonSchema),
 })
@@ -41,7 +41,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { id: courseId } = await params
     await requireOwnedCourseEditor(courseId)
     const body = contentSchema.safeParse(await request.json())
-    if (!body.success) return NextResponse.json({ error: 'Each module and lesson needs a title and valid order.' }, { status: 400 })
+    if (!body.success) return NextResponse.json({ error: 'Each module and lesson needs a title and valid order.', details: body.error.flatten() }, { status: 400 })
 
     const existing = await prisma.course.findUnique({ where: { id: courseId }, include: { modules: { include: { lessons: true } } } })
     if (!existing) return NextResponse.json({ error: 'Course not found' }, { status: 404 })

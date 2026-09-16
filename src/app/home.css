@@ -841,6 +841,57 @@
   flex: 0 0 auto;
   width: 300px;
 }
+.course-marquee {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: grab;
+}
+.course-marquee::-webkit-scrollbar {
+  display: none;
+}
+.course-marquee-track {
+  display: flex;
+  gap: 20px;
+  width: max-content;
+  align-items: stretch;
+}
+.course-marquee-item {
+  flex: 0 0 auto;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+}
+.course-marquee-item > .course-card {
+  width: 100%;
+  height: 100%;
+}
+.course-marquee-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 22px;
+}
+.course-marquee-controls button {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid #dfe2e9;
+  background: #fff;
+  color: #7d8594;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, opacity 0.2s;
+}
+.course-marquee-controls button:hover:not(:disabled) {
+  color: var(--blue);
+  border-color: var(--blue);
+}
+.course-marquee-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .atlas-course-image {
   height: 153px;
   position: relative;
@@ -1489,6 +1540,9 @@
     border-bottom: 1px solid var(--line);
   }
   .atlas-course-marquee .atlas-course-card {
+    width: 260px;
+  }
+  .course-marquee-item {
     width: 260px;
   }
   .atlas-category-tabs {
