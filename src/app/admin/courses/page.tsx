@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Plus, Search, Trash2, GripVertical } from 'lucide-react'
+import { BookOpen, Plus, Search, Trash2, GripVertical, Eye, Pencil, Globe, EyeOff } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { useToast } from '@/components/Toast'
 import type { AdminCourse, ApiCourseSection } from '@/types/api'
@@ -199,22 +199,16 @@ export default function AdminCoursesPage() {
                   <td>{course.schoolAccessCount}</td>
                   <td>{course.progressCount}</td>
                   <td>
-                    <select
-                      aria-label={`Actions for ${course.title}`}
-                      defaultValue=""
-                      style={{ ...selectStyle, minWidth: 140, height: 36, fontSize: 12 }}
-                      onChange={(event) => {
-                        const action = event.currentTarget.value
-                        event.currentTarget.value = ''
-                        handleCourseAction(course, action)
-                      }}
-                    >
-                      <option value="" disabled>Choose action</option>
-                      <option value="preview">Preview course</option>
-                      <option value="edit">Edit course</option>
-                      {session?.user?.role === 'ATLAS_ADMIN' && <option value="toggle-publish">{course.published ? 'Unpublish' : 'Publish'}</option>}
-                      <option value="delete" style={{ color: '#dc2626' }}>Delete course</option>
-                    </select>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="text-button" style={iconButtonStyle} title="Preview course" aria-label={`Preview ${course.title}`} onClick={() => handleCourseAction(course, 'preview')}><Eye size={15} /></button>
+                      <button className="text-button" style={iconButtonStyle} title="Edit course" aria-label={`Edit ${course.title}`} onClick={() => handleCourseAction(course, 'edit')}><Pencil size={15} /></button>
+                      {session?.user?.role === 'ATLAS_ADMIN' && (
+                        <button className="text-button" style={{ ...iconButtonStyle, color: course.published ? 'var(--muted)' : 'var(--blue)' }} title={course.published ? 'Unpublish course' : 'Publish course'} aria-label={`${course.published ? 'Unpublish' : 'Publish'} ${course.title}`} onClick={() => handleCourseAction(course, 'toggle-publish')}>
+                          {course.published ? <EyeOff size={15} /> : <Globe size={15} />}
+                        </button>
+                      )}
+                      <button className="text-button" style={{ ...iconButtonStyle, color: '#b42318' }} title="Delete course" aria-label={`Delete ${course.title}`} onClick={() => handleCourseAction(course, 'delete')}><Trash2 size={14} /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -233,3 +227,4 @@ const inputStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: '#374151', display: 'flex', flexDirection: 'column', gap: 3 }
 const selectStyle: React.CSSProperties = { height: 40, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#00000' }
 const smallInputStyle: React.CSSProperties = { height: 34, borderRadius: 7, border: '1px solid var(--line)', padding: '0 9px', fontSize: 12, background: '#00000', width: '100%' }
+const iconButtonStyle: React.CSSProperties = { width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', borderRadius: 6 }

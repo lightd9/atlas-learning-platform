@@ -33,6 +33,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
   const [savedSchoolIds, setSavedSchoolIds] = useState<string[]>([])
   const [accessSaving, setAccessSaving] = useState(false)
   const [accessSaved, setAccessSaved] = useState(false)
+  const [playbackCheck, setPlaybackCheck] = useState<Record<string, { checking: boolean; valid?: boolean; error?: string }>>({})
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
@@ -86,6 +87,19 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
   function updateLesson(moduleId: string, lessonId: string, patch: Partial<ApiLesson>) { setModules(modules.map((module) => module.id === moduleId ? { ...module, lessons: module.lessons.map((lesson) => lesson.id === lessonId ? { ...lesson, ...patch } : lesson) } : module)) }
   function removeModule(moduleId: string) { setModules(modules.filter((module) => module.id !== moduleId).map((module, index) => ({ ...module, sortOrder: index }))) }
   function removeLesson(moduleId: string, lessonId: string) { setModules(modules.map((module) => module.id === moduleId ? { ...module, lessons: module.lessons.filter((lesson) => lesson.id !== lessonId).map((lesson, index) => ({ ...lesson, sortOrder: index })) } : module)) }
+
+  async function checkPlayback(moduleId: string, lessonId: string) {
+    const playbackId = modules.find((module) => module.id === moduleId)?.lessons.find((lesson) => lesson.id === lessonId)?.muxPlaybackId
+    if (!playbackId) return
+    setPlaybackCheck((prev) => ({ ...prev, [lessonId]: { checking: true } }))
+    try {
+      const res = await fetch(`/api/mux/validate-playback?playbackId=${encodeURIComponent(playbackId)}`)
+      const data = await res.json()
+      setPlaybackCheck((prev) => ({ ...prev, [lessonId]: { checking: false, valid: Boolean(data.valid), error: data.error } }))
+    } catch {
+      setPlaybackCheck((prev) => ({ ...prev, [lessonId]: { checking: false, valid: false, error: 'Could not validate playback ID' } }))
+    }
+  }
 
   async function saveContent() {
     setContentSaving(true); setContentSaved(false); setContentError('')
@@ -245,7 +259,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                     </div>
                     <div style={{ margin: '10px 0 0 34px' }}>
                       {lesson.id.startsWith('new-') ? <div style={{ border: '1px dashed var(--line)', borderRadius: 9, padding: 12, color: 'var(--muted)', fontSize: 12 }}><Video size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />Save modules & lessons before uploading a video.</div> : <LessonVideoUploader courseId={courseId} lessonId={lesson.id} currentPlaybackId={lesson.muxPlaybackId} onReady={(playbackId, durationSeconds) => updateLesson(module.id, lesson.id, { muxPlaybackId: playbackId, ...(durationSeconds ? { durationSeconds } : {}) })} />}
-                      <details style={{ marginTop: 8 }}><summary style={{ cursor: 'pointer', color: 'var(--muted)', fontSize: 11 }}>Advanced: manual Playback ID</summary><input aria-label="Mux playback ID" value={lesson.muxPlaybackId ?? ''} onChange={(e) => updateLesson(module.id, lesson.id, { muxPlaybackId: e.target.value })} placeholder="Mux playback ID" style={{ ...smallInputStyle, marginTop: 7 }} /></details>
+                      <details style={{ marginTop: 8 }}><summary style={{ cursor: 'pointer', color: 'var(--muted)', fontSize: 11 }}>Advanced: manual Playback ID</summary><div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 7 }}><input aria-label="Mux playback ID" value={lesson.muxPlaybackId ?? ''} onChange={(e) => { updateLesson(module.id, lesson.id, { muxPlaybackId: e.target.value }); setPlaybackCheck((prev) => { const next = { ...prev }; delete next[lesson.id]; return next }) }} placeholder="Mux playback ID" style={{ ...smallInputStyle, width: 'auto', flex: 1 }} /><button type="button" className="secondary-button" style={{ height: 34, whiteSpace: 'nowrap', fontSize: 12 }} disabled={!lesson.muxPlaybackId || Boolean(playbackCheck[lesson.id]?.checking)} onClick={() => checkPlayback(module.id, lesson.id)}>{playbackCheck[lesson.id]?.checking ? 'Checking…' : 'Test playback ID'}</button></div>{playbackCheck[lesson.id] && !playbackCheck[lesson.id].checking && <p role="status" style={{ fontSize: 12, marginTop: 6, color: playbackCheck[lesson.id].valid ? 'var(--green)' : '#b42318' }}>{playbackCheck[lesson.id].valid ? 'Playback ID is valid' : playbackCheck[lesson.id].error ?? 'Invalid playback ID'}</p>}<p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>Find this in the Mux dashboard under <strong>Assets</strong> → your video → <strong>Playback ID</strong>. Only IDs from this Mux account play.</p></details>
                     </div>
                   </div>)}
                   <button className="text-button" onClick={() => addLesson(module.id)} style={{ marginTop: 8 }}><Plus size={15} /> Add lesson</button>

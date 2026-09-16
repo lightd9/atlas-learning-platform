@@ -80,7 +80,13 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
       hls.loadSource(src)
       hls.attachMedia(video)
       hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) setError(`Video playback error (${data.type})`)
+        if (!data.fatal) return
+        let detail: string = data.type
+        if (data.type === 'networkError' || data.type === 'mediaError') {
+          const response = data.networkDetails as XMLHttpRequest | null
+          if (response?.status) detail = `HTTP ${response.status}`
+        }
+        setError(`Video playback error (${detail})`)
       })
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = src
