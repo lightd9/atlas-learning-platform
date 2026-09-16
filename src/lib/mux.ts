@@ -43,7 +43,7 @@ export function getMuxClient() {
             mp4_support: 'standard',
             ...(passthrough ? { passthrough } : {}),
           },
-          cors_origin: process.env.AUTH_URL || '*',
+          cors_origin: [process.env.AUTH_URL, 'http://localhost:3000', 'http://localhost:5173'].filter(Boolean) as string[],
         }),
       })
       if (!res.ok) throw new Error('Failed to create direct upload')
@@ -55,6 +55,15 @@ export function getMuxClient() {
         headers: { 'Authorization': `Basic ${auth}` },
       })
       if (!res.ok) throw new Error('Failed to get asset')
+      return await res.json()
+    },
+
+    async getUpload(uploadId: string) {
+      const res = await fetch(`${baseUrl}/video/v1/uploads/${uploadId}`, {
+        headers: { 'Authorization': `Basic ${auth}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) throw new Error('Failed to get upload')
       return await res.json()
     },
 

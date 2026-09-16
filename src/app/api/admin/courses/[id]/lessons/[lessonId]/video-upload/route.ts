@@ -45,8 +45,44 @@ export async function GET(_request: Request, { params }: RouteContext) {
     const { id: courseId, lessonId } = await params
     await requireOwnedCourseEditor(courseId)
     if (!await getLesson(courseId, lessonId)) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
-    const upload = await prisma.muxUpload.findFirst({ where: { courseId, lessonId }, orderBy: { createdAt: 'desc' }, select: { id: true, muxUploadId: true, muxAssetId: true, playbackId: true, filename: true, sizeBytes: true, duration: true, status: true, errorCode: true, errorMessage: true, updatedAt: true } })
-    return NextResponse.json({ upload: upload ? { ...upload, sizeBytes: upload.sizeBytes?.toString() ?? null } : null })
+    const record = await prisma.muxUpload.findFirst({ where: { courseId, lessonId }, orderBy: { createdAt: 'desc' } })
+    if (!record) return NextResponse.json({ upload: null })
+
+    if (['WAITING', 'PROCESSING', 'CREATING'].includes(record.status) && record.muxUploadId) {
+      try {
+        const mux = getMuxClient()
+        if (mux) {
+          const upload = await mux.getUpload(record.muxUploadId)
+          const assetId = (upload.data as { asset_id?: string | null }).asset_id ?? null
+          if (assetId && assetId !== record.muxAssetId) {
+            await prisma.muxUpload.update({ where: { id: record.id }, data: { muxAssetId: assetId, status: 'PROCESSING' } })
+            record.muxAssetId = assetId
+            record.status = 'PROCESSING'
+          }
+          if (assetId) {
+            try {
+              const asset = await mux.getAsset(assetId)
+              const assetData = asset.data as { status?: string; duration?: number; playback_ids?: { id: string }[]; errors?: { type?: string; messages?: string[] } }
+              const playbackId = assetData.playback_ids?.find((item) => item.id)?.id ?? null
+              if (assetData.status === 'ready' && playbackId) {
+                await prisma.$transaction([
+                  prisma.muxUpload.update({ where: { id: record.id }, data: { muxAssetId: assetId, playbackId, duration: assetData.duration ?? null, status: 'READY', errorCode: null, errorMessage: null } }),
+                  prisma.lesson.update({ where: { id: lessonId }, data: { muxPlaybackId: playbackId, ...(assetData.duration ? { durationSeconds: Math.round(assetData.duration) } : {}) } }),
+                ])
+                record.status = 'READY'
+                record.playbackId = playbackId
+                record.duration = assetData.duration ?? null
+              } else if (assetData.status === 'errored') {
+                await prisma.muxUpload.update({ where: { id: record.id }, data: { muxAssetId: assetId, status: 'FAILED', errorCode: assetData.errors?.type ?? null, errorMessage: assetData.errors?.messages?.join(' ') ?? 'Mux could not process this video' } })
+                record.status = 'FAILED'
+              }
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+
+    return NextResponse.json({ upload: { id: record.id, muxUploadId: record.muxUploadId, muxAssetId: record.muxAssetId, playbackId: record.playbackId, filename: record.filename, sizeBytes: record.sizeBytes?.toString() ?? null, duration: record.duration, status: record.status, errorCode: record.errorCode, errorMessage: record.errorMessage, updatedAt: record.updatedAt } })
   } catch { return NextResponse.json({ error: 'Unable to load video upload' }, { status: 500 }) }
 }
 

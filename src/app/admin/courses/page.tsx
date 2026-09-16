@@ -74,10 +74,26 @@ export default function AdminCoursesPage() {
     } else toast('Unable to update course publication', 'error')
   }
 
+  async function handleDeleteCourse(course: AdminCourse) {
+    const hasProgress = course.progressCount > 0
+    const confirmed = window.confirm(
+      hasProgress
+        ? `Unpublish and archive "${course.title}"? This removes it from schools. The ${course.progressCount} existing learner record${course.progressCount === 1 ? '' : 's'} will be preserved.`
+        : `Delete "${course.title}"? This course has no learner progress and will be permanently removed.`
+    )
+    if (!confirmed) return
+    const res = await fetch(`/api/admin/courses/${course.id}`, { method: 'DELETE' })
+    const data = await res.json()
+    if (!res.ok) { toast(data.error ?? 'Unable to delete course', 'error'); return }
+    setCourses(courses.filter((c) => c.id !== course.id))
+    toast(data.message ?? 'Course deleted', 'success')
+  }
+
   function handleCourseAction(course: AdminCourse, action: string) {
     if (action === 'preview') router.push(`/admin/courses/${course.id}/preview`)
     if (action === 'edit') router.push(`/admin/courses/${course.id}`)
     if (action === 'toggle-publish') togglePublish(course)
+    if (action === 'delete') handleDeleteCourse(course)
   }
 
   const filtered = courses.filter((c) => {
@@ -197,6 +213,7 @@ export default function AdminCoursesPage() {
                       <option value="preview">Preview course</option>
                       <option value="edit">Edit course</option>
                       {session?.user?.role === 'ATLAS_ADMIN' && <option value="toggle-publish">{course.published ? 'Unpublish' : 'Publish'}</option>}
+                      <option value="delete" style={{ color: '#dc2626' }}>Delete course</option>
                     </select>
                   </td>
                 </tr>
