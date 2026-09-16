@@ -41,7 +41,19 @@ export default function AdminCoursesPage() {
       body: JSON.stringify({ ...form, durationMinutes: Number(form.durationMinutes), modules, resources }),
     })
     const data = await res.json()
-    if (!res.ok) { const message = data.error ?? 'Unable to create course'; setError(message); toast(message, 'error'); return }
+    if (!res.ok) {
+      let message = data.error ?? 'Unable to create course'
+      if (data.details?.fieldErrors) {
+        const parts: string[] = []
+        for (const [field, errors] of Object.entries(data.details.fieldErrors as Record<string, string[]>) as [string, string[]][]) {
+          if (errors.length > 0) parts.push(`${field}: ${errors[0]}`)
+        }
+        if (parts.length > 0) message += ` — ${parts.join('; ')}`
+      }
+      setError(message)
+      toast(message, 'error')
+      return
+    }
     setCourses([data.course, ...courses])
     setShowCreate(false)
     setForm({ slug: '', title: '', description: '', durationMinutes: 20, muxPlaybackId: '', notes: '' })
@@ -86,7 +98,7 @@ export default function AdminCoursesPage() {
         <div className="panel" style={{ marginBottom: 24 }}>
           <h3 style={{ margin: '0 0 16px' }}>Create new course</h3>
           <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 500 }}>
-            <input placeholder="Slug (e.g. ai-intro)" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} required style={inputStyle} />
+            <input placeholder="Slug (e.g. ai-intro)" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') })} required style={inputStyle} />
             <input placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required style={inputStyle} />
             <textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required style={{ ...inputStyle, height: 80, paddingTop: 10, resize: 'vertical' }} />
             <input placeholder="Duration (minutes)" type="number" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })} required style={inputStyle} />
@@ -98,7 +110,7 @@ export default function AdminCoursesPage() {
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 16, marginTop: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <h4 style={{ margin: 0, fontSize: 14 }}>Modules & lessons</h4>
-                <button type="button" className="secondary-button" style={{ fontSize: 12, height: 32, padding: '0 12px' }} onClick={() => setModules([...modules, { title: '', description: '', sortOrder: modules.length, lessons: [] }])}>
+                <button type="button" className="secondary-button" style={{ fontSize: 12, height: 32, padding: '0 12px' }} onClick={() => setModules([...modules, { title: `Module ${modules.length + 1}`, description: '', sortOrder: modules.length, lessons: [] }])}>
                   <Plus size={14} /> Add module
                 </button>
               </div>
@@ -117,7 +129,7 @@ export default function AdminCoursesPage() {
                         <button type="button" className="icon-button" onClick={() => { const m = [...modules]; m[mi].lessons = m[mi].lessons.filter((_, j) => j !== li); setModules(m) }}><Trash2 size={13} style={{ color: '#e53e3e' }} /></button>
                       </div>
                     ))}
-                    <button type="button" className="text-button" style={{ fontSize: 12 }} onClick={() => { const m = [...modules]; m[mi].lessons = [...m[mi].lessons, { title: '', description: '', durationSeconds: 0, sortOrder: m[mi].lessons.length }]; setModules(m) }}>
+                    <button type="button" className="text-button" style={{ fontSize: 12 }} onClick={() => { const m = [...modules]; m[mi].lessons = [...m[mi].lessons, { title: `Lesson ${m[mi].lessons.length + 1}`, description: '', durationSeconds: 0, sortOrder: m[mi].lessons.length }]; setModules(m) }}>
                       <Plus size={13} /> Add lesson
                     </button>
                   </div>
