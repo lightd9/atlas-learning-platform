@@ -238,7 +238,9 @@ export default function HomePage() {
   const slide = slides[active];
   const trackRef = useRef<HTMLDivElement>(null);
   const marqueeRef = useRef<HTMLDivElement>(null);
+  const recommendationRef = useRef<HTMLDivElement>(null);
   const [canScroll, setCanScroll] = useState({ left: false, right: false });
+  const [recommendationScroll, setRecommendationScroll] = useState({ left: false, right: false });
   const [managedFeaturedCourses, setManagedFeaturedCourses] = useState(featuredCourses);
   const [managedRecommendations, setManagedRecommendations] = useState(recommendations);
   const [managedSkills, setManagedSkills] = useState(newSkills);
@@ -250,7 +252,8 @@ export default function HomePage() {
         const placements = content?.TOP_COURSES ?? [];
         // Keep each placement tied to its own course thumbnail. Never borrow an
         // image from another homepage section when a course has no thumbnail.
-        const toImage = (course: any) => course.coverImageUrl || '';
+        const legacyImage = [...featuredCourses.map((item) => [item.title, item.image] as const), ...recommendations.map(([title, , image]) => [title, image] as const), ...newSkills.map(([title, , image]) => [title, image] as const)];
+        const toImage = (course: any) => course.coverImageUrl || legacyImage.find(([title]) => title === course.title)?.[1] || '';
         if (placements.length) setManagedFeaturedCourses(placements.map((course: any, index: number) => ({
           title: course.title,
           category: course.section?.name ?? 'Artificial Intelligence',
@@ -298,6 +301,23 @@ export default function HomePage() {
     if (!marquee) return;
     marquee.scrollLeft = 0;
   }, [activeCategory, categoryCourses.length]);
+
+  const updateRecommendationScroll = useCallback(() => {
+    const rail = recommendationRef.current;
+    if (!rail) return;
+    setRecommendationScroll({ left: rail.scrollLeft > 1, right: rail.scrollLeft < rail.scrollWidth - rail.clientWidth - 1 });
+  }, []);
+
+  useEffect(() => {
+    const rail = recommendationRef.current;
+    if (!rail) return;
+    updateRecommendationScroll();
+    rail.addEventListener('scroll', updateRecommendationScroll, { passive: true });
+    window.addEventListener('resize', updateRecommendationScroll);
+    return () => { rail.removeEventListener('scroll', updateRecommendationScroll); window.removeEventListener('resize', updateRecommendationScroll); };
+  }, [updateRecommendationScroll, managedRecommendations.length]);
+
+  const scrollRecommendations = (direction: 1 | -1) => recommendationRef.current?.scrollBy({ left: direction * 270, behavior: 'smooth' });
 
   const scrollByCard = (dir: 1 | -1) => {
     const marquee = marqueeRef.current;
@@ -415,7 +435,8 @@ export default function HomePage() {
             </p>
             <Link href="#courses">View pathway</Link>
           </div>
-          <div className="atlas-recommendation-list">
+          {recommendationScroll.left && <button className="atlas-round-control atlas-recommendation-prev" type="button" aria-label="View previous recommendations" onClick={() => scrollRecommendations(-1)}><ArrowLeft size={16} /></button>}
+          <div className="atlas-recommendation-list" ref={recommendationRef}>
             {managedRecommendations.map(([title, category, image]) => (
               <article className="atlas-mini-course" key={title}>
                 <div className="atlas-mini-thumb">
@@ -430,9 +451,11 @@ export default function HomePage() {
             ))}
           </div>
           <button
-            className="atlas-round-control"
+            className="atlas-round-control atlas-recommendation-next"
             type="button"
             aria-label="View more recommendations"
+            disabled={!recommendationScroll.right}
+            onClick={() => scrollRecommendations(1)}
           >
             <ArrowRight size={16} />
           </button>

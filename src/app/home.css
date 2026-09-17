@@ -3026,3 +3026,12 @@
 .atlas-mini-thumb { position:relative; overflow:hidden; }
 .atlas-mini-thumb img { width:100%; height:100%; object-fit:cover; display:block; border-radius:4px; }
 @media (max-width:760px) { .atlas-recommendation-list { display:flex; flex-wrap:nowrap; } .atlas-recommendation-list .atlas-mini-course { flex-basis:230px; } }
+
+.atlas-recommendation { position:relative; }
+.atlas-recommendation-list { display:flex !important; flex-wrap:nowrap !important; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; padding-right:24px; }
+.atlas-recommendation-list::-webkit-scrollbar { display:none; }
+.atlas-recommendation-list .atlas-mini-course { flex:0 0 230px; min-width:230px; }
+.atlas-recommendation-prev { position:absolute; left:29%; z-index:2; }
+.atlas-recommendation-next { cursor:pointer; }
+.atlas-recommendation-next:disabled { opacity:.38; cursor:default; }
+@media (max-width:760px) { .atlas-recommendation-prev { left:12px; } .atlas-recommendation-list { padding-right:25px; } }
