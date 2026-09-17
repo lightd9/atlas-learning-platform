@@ -21,6 +21,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import PublicFooter from "@/components/PublicFooter";
 import PublicNavbar from "@/components/PublicNavbar";
+import { DEFAULT_COURSE_COVER } from "@/lib/course-cover";
 
 /* Restore the first slide by uncommenting the block below and removing the current first slide */
 const slides = [
@@ -249,7 +250,7 @@ export default function HomePage() {
     fetch('/api/public/home-content', { cache: 'no-store' })
       .then((response) => response.ok ? response.json() : null)
       .then((content) => {
-        const toImage = (course: any) => course.coverImageUrl || '';
+        const toImage = (course: any) => course.coverImageUrl || DEFAULT_COURSE_COVER;
         const extraCourses = (items: any[], existingTitles: string[]) => items.filter((course) => !existingTitles.includes(course.title)).map((course) => course);
         const topExtras = extraCourses(content?.TOP_COURSES ?? [], featuredCourses.map((course) => course.title));
         if (topExtras.length) setManagedFeaturedCourses([...featuredCourses, ...topExtras.map((course: any) => ({

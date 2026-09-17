@@ -1,0 +1,1 @@
+export const DEFAULT_COURSE_COVER = '/course-cover-default.png'

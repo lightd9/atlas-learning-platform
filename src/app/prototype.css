@@ -238,8 +238,21 @@ p[style*="#ecfdf3"] a { color:#fff; }
 .placement-skeleton { height:78px; border-radius:10px; background:linear-gradient(90deg,#f3f5f8,#e8edf4,#f3f5f8); background-size:200% 100%; animation:content-shimmer 1.2s infinite; }
 @keyframes content-shimmer { to { background-position:-200% 0; } }
 .content-footnote { display:flex; align-items:center; gap:7px; margin:20px 0 0; color:#7b8494; font-size:11px; }
+.content-draft-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:22px; padding-top:18px; border-top:1px solid var(--line); }
+.autocomplete-search { position:relative; width:100%; }
+.course-search-results { position:absolute; z-index:20; top:calc(100% + 7px); left:0; right:0; padding:6px; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 14px 30px #172b6420; }
+.course-search-results button { width:100%; display:flex; align-items:center; gap:10px; padding:9px; border:0; background:transparent; border-radius:7px; text-align:left; cursor:pointer; }
+.course-search-results button:hover,.course-search-results button:focus-visible { background:#f5f7fc; }
+.course-search-results button>span:last-child { min-width:0; display:flex; flex-direction:column; gap:3px; }
+.course-search-results strong { color:var(--navy); font-size:12px; }
+.course-search-results small { color:#7b8494; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.result-thumb { width:42px; height:30px; flex-shrink:0; border-radius:5px; background:#e7f0fa; overflow:hidden; }
+.result-thumb img { width:100%; height:100%; object-fit:cover; }
+.course-search-empty { padding:12px; color:#7b8494; font-size:11px; }
+.content-draft-actions button { min-width:145px; }
 .content-footnote svg { color:#21937d; flex-shrink:0; }
 .spin { animation:content-spin .8s linear infinite; }
 @keyframes content-spin { to { transform:rotate(360deg); } }
 @media(max-width:800px) { .content-layout { grid-template-columns:1fr; } .content-sections { position:static; } .section-tabs { display:grid; grid-template-columns:repeat(2,1fr); } .content-add-row { grid-template-columns:1fr; } .placement-card { align-items:flex-start; flex-wrap:wrap; } .placement-image { width:96px; } .placement-actions { margin-left:auto; } .content-footnote { align-items:flex-start; } }
+@media(max-width:800px) { .content-draft-actions { justify-content:stretch; } .content-draft-actions button { flex:1; min-width:0; } }
 @media(prefers-reduced-motion:reduce) { .placement-card,.section-tabs button { transition:none; } .placement-skeleton,.spin { animation:none; } }
