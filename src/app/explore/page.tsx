@@ -5,7 +5,6 @@ import PublicFooter from "@/components/PublicFooter";
 import PublicNavbar from "@/components/PublicNavbar";
 import { categoryId, publicCourseCategories, publicCourses as fallbackPublicCourses } from "@/data/publicCourses";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_COURSE_COVER } from "@/lib/course-cover";
 
 function CourseStars() {
   return (
@@ -22,8 +21,8 @@ export default async function ExplorePage({
 }) {
   const { q = "" } = await searchParams;
   const query = q.toLowerCase().trim();
-  const placements = await prisma.homePagePlacement.findMany({ where: { section: "EXPLORE", active: true, course: { published: true, status: "PUBLISHED" } }, orderBy: { sortOrder: "asc" }, include: { course: { select: { title: true, description: true, coverImageUrl: true, durationMinutes: true, section: { select: { name: true } } } } } });
-  const managedCourses = placements.map((placement) => ({ title: placement.course.title, category: placement.course.section?.name ?? "Artificial Intelligence", duration: `${placement.course.durationMinutes} min`, lessons: 0, status: "available" as const, image: placement.course.coverImageUrl || DEFAULT_COURSE_COVER }));
+  const placements = await prisma.homePagePlacement.findMany({ where: { section: "EXPLORE", active: true, course: { published: true, status: "PUBLISHED" } }, orderBy: { sortOrder: "asc" }, include: { course: { select: { id: true, title: true, description: true, coverImageUrl: true, durationMinutes: true, section: { select: { name: true } } } } } });
+  const managedCourses = placements.map((placement) => ({ title: placement.course.title, category: placement.course.section?.name ?? "Artificial Intelligence", duration: `${placement.course.durationMinutes} min`, lessons: 0, status: "available" as const, image: placement.course.coverImageUrl || `/api/public/course-thumbnail/${placement.course.id}` }));
   const publicCourses = [...fallbackPublicCourses, ...managedCourses.filter((course) => !fallbackPublicCourses.some((fallback) => fallback.title === course.title))];
   const exploreCategories = Array.from(new Set(publicCourses.map((course) => course.category)));
   const filtered = query

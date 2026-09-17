@@ -7,7 +7,6 @@ import { useEffect, useRef, useState } from "react";
 import Logo from "@/components/Logo";
 import CookieConsent from "@/components/CookieConsent";
 import { categoryId, publicCourses, publicCourseCategories } from "@/data/publicCourses";
-import { DEFAULT_COURSE_COVER } from "@/lib/course-cover";
 
 export default function PublicNavbar() {
   const router = useRouter();
@@ -23,7 +22,7 @@ export default function PublicNavbar() {
   useEffect(() => {
     fetch('/api/public/home-content', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((content) => {
       const explore = content?.EXPLORE ?? [];
-      if (explore.length) setSearchCourses([...publicCourses, ...explore.filter((course: any) => !publicCourses.some((fallback) => fallback.title === course.title)).map((course: any) => ({ title: course.title, category: course.section?.name ?? 'Course', duration: `${course.durationMinutes ?? 0} min`, lessons: 0, status: 'available' as const, image: course.coverImageUrl || DEFAULT_COURSE_COVER }))]);
+      if (explore.length) setSearchCourses([...publicCourses, ...explore.filter((course: any) => !publicCourses.some((fallback) => fallback.title === course.title)).map((course: any) => ({ title: course.title, category: course.section?.name ?? 'Course', duration: `${course.durationMinutes ?? 0} min`, lessons: 0, status: 'available' as const, image: course.coverImageUrl || `/api/public/course-thumbnail/${course.id}` }))]);
     }).catch(() => {});
   }, []);
 

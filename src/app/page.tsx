@@ -21,7 +21,6 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import PublicFooter from "@/components/PublicFooter";
 import PublicNavbar from "@/components/PublicNavbar";
-import { DEFAULT_COURSE_COVER } from "@/lib/course-cover";
 
 /* Restore the first slide by uncommenting the block below and removing the current first slide */
 const slides = [
@@ -250,7 +249,7 @@ export default function HomePage() {
     fetch('/api/public/home-content', { cache: 'no-store' })
       .then((response) => response.ok ? response.json() : null)
       .then((content) => {
-        const toImage = (course: any) => course.coverImageUrl || DEFAULT_COURSE_COVER;
+        const toImage = (course: any) => course.coverImageUrl || `/api/public/course-thumbnail/${course.id}`;
         const extraCourses = (items: any[], existingTitles: string[]) => items.filter((course) => !existingTitles.includes(course.title)).map((course) => course);
         const topExtras = extraCourses(content?.TOP_COURSES ?? [], featuredCourses.map((course) => course.title));
         if (topExtras.length) setManagedFeaturedCourses([...featuredCourses, ...topExtras.map((course: any) => ({
@@ -263,7 +262,8 @@ export default function HomePage() {
         }))]);
         const recommended = extraCourses(content?.RECOMMENDED ?? [], recommendations.map(([title]) => title));
         if (recommended.length) setManagedRecommendations([...recommendations.map(([title, category, image]) => [title, category, image] as [string, string, string]), ...recommended.map((course: any) => [course.title, course.section?.name ?? 'Recommended learning', toImage(course)] as [string, string, string])]);
-        const unlock = extraCourses(content?.UNLOCK_SOMETHING_NEW ?? [], newSkills.map(([title]) => title));
+        const allLegacyTitles = [...featuredCourses.map((course) => course.title), ...recommendations.map(([title]) => title), ...newSkills.map(([title]) => title)];
+        const unlock = extraCourses(content?.UNLOCK_SOMETHING_NEW ?? [], allLegacyTitles);
         if (unlock.length) setManagedSkills([...newSkills.map(([title, category, image]) => [title, category, image] as [string, string, string]), ...unlock.map((course: any) => [course.title, course.section?.name ?? 'New skill', toImage(course)] as [string, string, string])]);
       })
       .catch(() => {})

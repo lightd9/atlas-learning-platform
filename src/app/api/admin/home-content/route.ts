@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 const sectionSchema = z.enum(['RECOMMENDED', 'TOP_COURSES', 'UNLOCK_SOMETHING_NEW', 'EXPLORE'])
 const placementSchema = z.object({ courseId: z.string().min(1), section: sectionSchema, sortOrder: z.number().int().nonnegative().optional(), active: z.boolean().optional() })
 const reorderSchema = z.object({ ids: z.array(z.string()).min(1) })
-const sectionLimits: Record<string, number | null> = { RECOMMENDED: 5, TOP_COURSES: null, UNLOCK_SOMETHING_NEW: 3, EXPLORE: null }
+const sectionLimits: Record<string, number | null> = { RECOMMENDED: 5, TOP_COURSES: null, UNLOCK_SOMETHING_NEW: 6, EXPLORE: null }
 
 export async function GET() {
   try {
