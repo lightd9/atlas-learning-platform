@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import AuthShell from '@/components/AuthShell'
 import CourseCard from '@/components/CourseCard'
+import CourseMarquee from '@/components/CourseMarquee'
 import type { ApiCourse } from '@/types/api'
 
 function getGreeting() {
@@ -147,7 +148,9 @@ export default function DashboardPage() {
 
       {loading
         ? <div className="course-grid">{[0, 1, 2].map((i) => <div key={i} className="course-card" style={{ height: 260, opacity: 0.4 }} />)}</div>
-        : <div className="course-grid">{mapped.map((course, i) => <CourseCard key={course.id} course={course} index={i} onClick={() => router.push(`/courses/${course.id}`)} />)}</div>
+        : mapped.length > 0
+          ? <CourseMarquee>{mapped.map((course, i) => <div key={course.id} className="course-marquee-item"><CourseCard course={course} index={i} onClick={() => router.push(`/courses/${course.id}`)} /></div>)}</CourseMarquee>
+          : <div className="panel" style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>No courses available yet.</div>
       }
 
       <div className="dashboard-lower">
