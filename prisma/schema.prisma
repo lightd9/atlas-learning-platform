@@ -116,6 +116,7 @@ model Course {
   title           String
   description     String
   durationMinutes Int
+  durationSeconds Int              @default(0)
   muxPlaybackId   String?
   published       Boolean          @default(true)
   sectionId       String?

@@ -7,6 +7,8 @@ import { ArrowLeft, Save, Plus, Trash2, Video, ChevronDown } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { useToast } from '@/components/Toast'
 import LessonVideoUploader from '@/components/LessonVideoUploader'
+import DurationInput from '@/components/DurationInput'
+import { courseTotalSeconds } from '@/lib/format'
 import type { AdminCourse, ApiCourseSection, ApiCourseModule, ApiCourseResource, ApiLesson } from '@/types/api'
 
 export default function AdminCourseEditPage({ params }: { params: Promise<{ courseId: string }> }) {
@@ -19,7 +21,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
   const [loadError, setLoadError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [form, setForm] = useState({ title: '', description: '', durationMinutes: 20, published: true, muxPlaybackId: '', sectionId: '', notes: '' })
+  const [form, setForm] = useState({ title: '', description: '', durationSeconds: 1200, published: true, muxPlaybackId: '', sectionId: '', notes: '' })
   const [sections, setSections] = useState<ApiCourseSection[]>([])
   const [schools, setSchools] = useState<{ id: string; name: string }[]>([])
   const [modules, setModules] = useState<ApiCourseModule[]>([])
@@ -46,7 +48,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
       }).then((d) => {
         const c = d.course
         setCourse(c)
-        setForm({ title: c.title, description: c.description, durationMinutes: c.durationMinutes, published: c.published, muxPlaybackId: c.muxPlaybackId || '', sectionId: c.sectionId || '', notes: c.notes || '' })
+        setForm({ title: c.title, description: c.description, durationSeconds: courseTotalSeconds(c), published: c.published, muxPlaybackId: c.muxPlaybackId || '', sectionId: c.sectionId || '', notes: c.notes || '' })
         setResources(c.resources ?? [])
         Promise.all([fetch('/api/admin/course-sections').then((r) => r.json()), fetch(`/api/admin/courses/${courseId}/content`).then((r) => r.json()), fetch('/api/admin/schools').then((r) => r.json())]).then(([sectionData, contentData, schoolData]) => {
           setSections(sectionData.sections ?? []); setModules(contentData.modules ?? [])
@@ -68,7 +70,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
     const res = await fetch(`/api/admin/courses/${courseId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, durationMinutes: Math.max(1, Math.round(form.durationSeconds / 60)) }),
     })
     setSaving(false)
     if (res.ok) { setSaved(true); toast('Changes saved', 'success') }
@@ -174,8 +176,8 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                 <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes learners should read below the video player" style={{ ...inputStyle, height: 100, paddingTop: 10, resize: 'vertical' }} />
               </label>
               <label style={labelStyle}>
-                Duration (minutes)
-                <input type="number" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })} required style={inputStyle} />
+                Duration (minutes and seconds)
+                <DurationInput totalSeconds={form.durationSeconds} onChange={(totalSeconds) => setForm({ ...form, durationSeconds: totalSeconds })} />
               </label>
               <label style={labelStyle}>
                 Course section
@@ -250,11 +252,11 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                 <div style={{ padding: '10px 14px 14px' }}>
                   <input aria-label={`${module.title} description`} value={module.description ?? ''} onChange={(e) => updateModule(module.id, { description: e.target.value })} placeholder="Optional module description" style={{ ...inputStyle, marginTop: 0, marginBottom: 10 }} />
                   {module.lessons.map((lesson, lessonIndex) => <div className="lesson-editor-row" key={lesson.id} style={{ padding: '14px 0', borderTop: '1px solid #edf0f5' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '26px 1.2fr 1fr 100px 36px', gap: 8, alignItems: 'center' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '26px 1fr 1.1fr 148px 36px', gap: 8, alignItems: 'center' }}>
                       <span style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>{lessonIndex + 1}</span>
                       <input aria-label="Lesson title" value={lesson.title} onChange={(e) => updateLesson(module.id, lesson.id, { title: e.target.value })} placeholder="Lesson title" style={smallInputStyle} />
                       <input aria-label="Lesson description" value={lesson.description ?? ''} onChange={(e) => updateLesson(module.id, lesson.id, { description: e.target.value })} placeholder="Description" style={smallInputStyle} />
-                      <input aria-label="Duration in minutes" type="number" min="0" value={Math.round(lesson.durationSeconds / 60)} onChange={(e) => updateLesson(module.id, lesson.id, { durationSeconds: Number(e.target.value) * 60 })} placeholder="Minutes" style={smallInputStyle} />
+                      <DurationInput compact totalSeconds={lesson.durationSeconds} onChange={(totalSeconds) => updateLesson(module.id, lesson.id, { durationSeconds: totalSeconds })} />
                       <button className="icon-button" aria-label={`Delete ${lesson.title}`} onClick={() => removeLesson(module.id, lesson.id)}><Trash2 size={15} /></button>
                     </div>
                     <div style={{ margin: '10px 0 0 34px' }}>

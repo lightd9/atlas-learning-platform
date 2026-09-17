@@ -11,6 +11,18 @@ export function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
+export function formatClock(totalSeconds: number): string {
+  const safe = Number.isFinite(totalSeconds) && totalSeconds > 0 ? Math.max(0, Math.round(totalSeconds)) : 0
+  const m = Math.floor(safe / 60)
+  const s = safe % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+export function courseTotalSeconds(course: { durationSeconds?: number | null; durationMinutes: number }): number {
+  const seconds = course.durationSeconds ?? 0
+  return seconds > 0 ? seconds : course.durationMinutes * 60
+}
+
 export function formatTimestamp(date: string | Date | null): string {
   if (!date) return '—'
   const d = new Date(date)

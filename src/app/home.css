@@ -892,6 +892,67 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+.duration-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.duration-field {
+  position: relative;
+}
+.duration-field input[type="number"] {
+  height: 40px;
+  width: 76px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  padding: 0 34px 0 11px;
+  font-size: 13px;
+  color: #1d2939;
+  background: #fff;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.duration-field input[type="number"]::-webkit-outer-spin-button,
+.duration-field input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.duration-field input[type="number"]:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgb(43 94 162 / 0.12);
+}
+.duration-field .duration-unit {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: #98a2b3;
+  pointer-events: none;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+}
+.duration-colon {
+  font-size: 15px;
+  font-weight: 600;
+  color: #98a2b3;
+}
+.duration-input-compact .duration-field input[type="number"] {
+  height: 34px;
+  width: 58px;
+  padding: 0 28px 0 9px;
+  font-size: 12px;
+  border-radius: 7px;
+}
+.duration-input-compact .duration-field .duration-unit {
+  font-size: 9px;
+  right: 8px;
+}
+.duration-input-compact .duration-colon {
+  font-size: 13px;
+}
 .atlas-course-image {
   height: 153px;
   position: relative;

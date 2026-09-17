@@ -4,6 +4,7 @@ export interface ApiCourse {
   title: string
   description: string
   durationMinutes: number
+  durationSeconds?: number
   published: boolean
   muxPlaybackId?: string | null
   section?: ApiCourseSection | null
@@ -125,6 +126,7 @@ export interface AdminCourse {
   title: string
   description: string
   durationMinutes: number
+  durationSeconds?: number
   published: boolean
   muxPlaybackId: string | null
   sectionId: string | null

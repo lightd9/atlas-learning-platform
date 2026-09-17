@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { BookOpen, Plus, Search, Trash2, GripVertical, Eye, Pencil, Globe, EyeOff } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { useToast } from '@/components/Toast'
+import DurationInput from '@/components/DurationInput'
+import { courseTotalSeconds, formatClock } from '@/lib/format'
 import type { AdminCourse, ApiCourseSection } from '@/types/api'
 
 export default function AdminCoursesPage() {
@@ -16,7 +18,7 @@ export default function AdminCoursesPage() {
   const [sections, setSections] = useState<ApiCourseSection[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ slug: '', title: '', description: '', durationMinutes: 20, muxPlaybackId: '', notes: '' })
+  const [form, setForm] = useState({ slug: '', title: '', description: '', durationSeconds: 1200, muxPlaybackId: '', notes: '' })
   const [resources, setResources] = useState<{ title: string; description: string; url: string; fileName: string; sortOrder: number }[]>([])
   const [modules, setModules] = useState<{ title: string; description: string; sortOrder: number; lessons: { title: string; description: string; durationSeconds: number; sortOrder: number }[] }[]>([])
   const [error, setError] = useState('')
@@ -38,7 +40,7 @@ export default function AdminCoursesPage() {
     const res = await fetch('/api/admin/courses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, durationMinutes: Number(form.durationMinutes), modules, resources }),
+      body: JSON.stringify({ ...form, durationMinutes: Math.max(1, Math.round(form.durationSeconds / 60)), modules, resources }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -56,7 +58,7 @@ export default function AdminCoursesPage() {
     }
     setCourses([data.course, ...courses])
     setShowCreate(false)
-    setForm({ slug: '', title: '', description: '', durationMinutes: 20, muxPlaybackId: '', notes: '' })
+    setForm({ slug: '', title: '', description: '', durationSeconds: 1200, muxPlaybackId: '', notes: '' })
     setModules([])
     setResources([])
     toast('Course created', 'success')
@@ -117,7 +119,7 @@ export default function AdminCoursesPage() {
             <input placeholder="Slug (e.g. ai-intro)" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') })} required style={inputStyle} />
             <input placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required style={inputStyle} />
             <textarea placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required style={{ ...inputStyle, height: 80, paddingTop: 10, resize: 'vertical' }} />
-            <input placeholder="Duration (minutes)" type="number" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })} required style={inputStyle} />
+            <label style={labelStyle}>Duration<DurationInput totalSeconds={form.durationSeconds} onChange={(totalSeconds) => setForm({ ...form, durationSeconds: totalSeconds })} /></label>
             <input placeholder="Mux playback ID (optional)" value={form.muxPlaybackId} onChange={(e) => setForm({ ...form, muxPlaybackId: e.target.value })} style={inputStyle} />
             <label style={labelStyle}>Learner notes<textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes learners should read below the video player" style={{ ...inputStyle, height: 90, paddingTop: 10, resize: 'vertical' }} /></label>
 
@@ -141,7 +143,7 @@ export default function AdminCoursesPage() {
                     {mod.lessons.map((lesson, li) => (
                       <div key={li} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
                         <input placeholder="Lesson title" value={lesson.title} onChange={(e) => { const m = [...modules]; m[mi].lessons[li] = { ...m[mi].lessons[li], title: e.target.value }; setModules(m) }} style={{ ...inputStyle, flex: 1, fontSize: 12, height: 34 }} />
-                        <input placeholder="Duration sec" type="number" value={lesson.durationSeconds || ''} onChange={(e) => { const m = [...modules]; m[mi].lessons[li] = { ...m[mi].lessons[li], durationSeconds: Number(e.target.value) }; setModules(m) }} style={{ ...inputStyle, width: 100, fontSize: 12, height: 34 }} />
+                        <DurationInput compact totalSeconds={lesson.durationSeconds} onChange={(totalSeconds) => { const m = [...modules]; m[mi].lessons[li] = { ...m[mi].lessons[li], durationSeconds: totalSeconds }; setModules(m) }} />
                         <button type="button" className="icon-button" onClick={() => { const m = [...modules]; m[mi].lessons = m[mi].lessons.filter((_, j) => j !== li); setModules(m) }}><Trash2 size={13} style={{ color: '#e53e3e' }} /></button>
                       </div>
                     ))}
@@ -194,7 +196,7 @@ export default function AdminCoursesPage() {
                   <td><strong>{course.title}</strong></td>
                   <td style={{ color: 'var(--muted)' }}>{course.slug}</td>
                   <td>{course.section?.name ?? <span style={{ color: 'var(--muted)' }}>Unsectioned</span>}</td>
-                  <td>{course.durationMinutes} min</td>
+                  <td>{formatClock(courseTotalSeconds(course))}</td>
                   <td><span className={`badge ${course.published ? 'badge-active' : 'badge-inactive'}`}>{course.published ? 'Published' : 'Unpublished'}</span></td>
                   <td>{course.schoolAccessCount}</td>
                   <td>{course.progressCount}</td>

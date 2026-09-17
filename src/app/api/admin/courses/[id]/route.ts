@@ -10,6 +10,7 @@ const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).optional(),
   durationMinutes: z.number().int().positive().optional(),
+  durationSeconds: z.number().int().nonnegative().optional(),
   published: z.boolean().optional(),
   muxPlaybackId: z.preprocess(cleanNullable, z.string().nullable().optional()),
   sectionId: z.preprocess(cleanNullable, z.string().nullable().optional()),
