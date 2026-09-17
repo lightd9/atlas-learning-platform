@@ -182,7 +182,6 @@ export default function AdminCoursesPage() {
               <tr>
                 <th>Title</th>
                 <th>Slug</th>
-                <th>Section</th>
                 <th>Duration</th>
                 <th>Status</th>
                 <th>Schools</th>
@@ -195,7 +194,6 @@ export default function AdminCoursesPage() {
                 <tr key={course.id}>
                   <td><strong>{course.title}</strong></td>
                   <td style={{ color: 'var(--muted)' }}>{course.slug}</td>
-                  <td>{course.section?.name ?? <span style={{ color: 'var(--muted)' }}>Unsectioned</span>}</td>
                   <td>{formatClock(courseTotalSeconds(course))}</td>
                   <td><span className={`badge ${course.published ? 'badge-active' : 'badge-inactive'}`}>{course.published ? 'Published' : 'Unpublished'}</span></td>
                   <td>{course.schoolAccessCount}</td>
