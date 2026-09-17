@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Mail, UsersRound, RefreshCw } from 'lucide-react'
+import { Mail, UsersRound, RefreshCw, Ban } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import SetupLinkCard from '@/components/SetupLinkCard'
 import { useToast } from '@/components/Toast'
@@ -113,20 +113,10 @@ export default function AdminInvitationsPage() {
                     <td><span className={`badge ${invitationStatusBadge(inv.status)}`}>{inv.status}</span></td>
                     <td>{inv.status === 'REVOKED' ? '—' : new Date(inv.expiresAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
                     <td>
-                      <select
-                        aria-label={`Actions for invitation to ${inv.name}`}
-                        defaultValue=""
-                        style={{ ...selectStyle, minWidth: 140, height: 36, fontSize: 12 }}
-                        onChange={(event) => {
-                          const action = event.currentTarget.value
-                          event.currentTarget.value = ''
-                          handleInvitationAction(inv, action)
-                        }}
-                      >
-                        <option value="" disabled>Choose action</option>
-                        <option value="resend">Resend link</option>
-                        {inv.status !== 'REVOKED' && <option value="revoke">Revoke</option>}
-                      </select>
+                      <span style={{ display: 'inline-flex', gap: 5 }} aria-label={`Actions for invitation to ${inv.name}`}>
+                        <button className="icon-button" title="Resend invitation" aria-label={`Resend invitation to ${inv.name}`} onClick={() => handleInvitationAction(inv, 'resend')}><RefreshCw size={16} /></button>
+                        {inv.status !== 'REVOKED' && <button className="icon-button" title="Revoke invitation" aria-label={`Revoke invitation for ${inv.name}`} onClick={() => handleInvitationAction(inv, 'revoke')}><Ban size={16} style={{ color: '#b42318' }} /></button>}
+                      </span>
                     </td>
                   </tr>
                 ))}
