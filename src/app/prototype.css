@@ -189,3 +189,5 @@ p[style*="#ecfdf3"] a { color:#fff; }
 .hero-symbol-img{width:68px;height:auto;object-fit:contain;display:block}.hero-symbol{background:transparent;box-shadow:none;width:220px;height:220px}
 .hero-symbol-img{width:185px;height:auto;object-fit:contain;display:block}.hero-symbol{background:transparent;box-shadow:none;width:220px;height:220px;top:10px;left:45px}
 .hero-symbol-img{width:185px;height:auto;object-fit:contain;display:block}.school-analytics-metrics .metric-icon-img .metric-img{height:46px;max-width:none;width:auto}
+/* Keep course thumbnails aligned with the landscape Mux frame. */
+.course-art { aspect-ratio: 16 / 9; height: auto !important; }
