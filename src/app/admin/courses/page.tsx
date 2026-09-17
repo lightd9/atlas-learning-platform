@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { BookOpen, Plus, Search, Trash2, GripVertical, Eye, Pencil, Globe, EyeOff } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { useToast } from '@/components/Toast'
+import DurationInput from '@/components/DurationInput'
 import { courseTotalSeconds, formatClock } from '@/lib/format'
 import type { AdminCourse, ApiCourseSection } from '@/types/api'
 
@@ -20,9 +21,9 @@ export default function AdminCoursesPage() {
   const [selectedSchoolIds, setSelectedSchoolIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ slug: '', title: '', description: '', coverImageUrl: '', sectionId: '', status: 'DRAFT', notes: '' })
+  const [form, setForm] = useState({ slug: '', title: '', description: '', coverImageUrl: '', durationSeconds: 1200, muxPlaybackId: '', notes: '' })
   const [resources, setResources] = useState<{ title: string; description: string; url: string; fileName: string; sortOrder: number }[]>([])
-  const [modules, setModules] = useState<{ title: string; description: string; sortOrder: number; lessons: { title: string; description: string; durationSeconds: number; sortOrder: number }[] }[]>([])
+  const [modules, setModules] = useState<{ title: string; description: string; sortOrder: number; lessons: { title: string; description: string; durationSeconds: number; muxPlaybackId: string; sortOrder: number }[] }[]>([])
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -42,7 +43,7 @@ export default function AdminCoursesPage() {
     const res = await fetch('/api/admin/courses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, durationMinutes: 0, durationSeconds: 0, modules, resources }),
+      body: JSON.stringify({ ...form, durationMinutes: Math.max(1, Math.ceil(form.durationSeconds / 60)), modules, resources }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -54,6 +55,7 @@ export default function AdminCoursesPage() {
         }
         if (parts.length > 0) message += ` — ${parts.join('; ')}`
       }
+      if (data.suggestion) message += ` ${data.suggestion}`
       setError(message)
       toast(message, 'error')
       return
@@ -64,7 +66,7 @@ export default function AdminCoursesPage() {
     }
     setCourses([data.course, ...courses])
     setShowCreate(false)
-    setForm({ slug: '', title: '', description: '', coverImageUrl: '', sectionId: '', status: 'DRAFT', notes: '' })
+    setForm({ slug: '', title: '', description: '', coverImageUrl: '', durationSeconds: 1200, muxPlaybackId: '', notes: '' })
     setModules([])
     setResources([])
     setAvailabilityMode('ALL'); setSelectedSchoolIds(schools.map((school) => school.id))
@@ -84,12 +86,7 @@ export default function AdminCoursesPage() {
   }
 
   async function handleDeleteCourse(course: AdminCourse) {
-    const hasProgress = course.progressCount > 0
-    const confirmed = window.confirm(
-      hasProgress
-        ? `Unpublish and archive "${course.title}"? This removes it from schools. The ${course.progressCount} existing learner record${course.progressCount === 1 ? '' : 's'} will be preserved.`
-        : `Delete "${course.title}"? This course has no learner progress and will be permanently removed.`
-    )
+    const confirmed = window.confirm(`Permanently delete "${course.title}"? This removes the course, lessons, resources, and all learner progress. Use Unpublish if you want to retain the course data.`)
     if (!confirmed) return
     const res = await fetch(`/api/admin/courses/${course.id}`, { method: 'DELETE' })
     const data = await res.json()
@@ -128,8 +125,8 @@ export default function AdminCoursesPage() {
             <label style={labelStyle}>Course URL slug <span aria-hidden="true">*</span><input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') })} required placeholder="e.g. ai-intro" style={inputStyle} /><small style={helperStyle}>Used in the course URL. It cannot be changed later.</small></label>
             <label style={labelStyle}>Course description <span aria-hidden="true">*</span><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required style={{ ...inputStyle, height: 80, paddingTop: 10, resize: 'vertical' }} /></label>
             <label style={labelStyle}>Cover image URL<input type="url" value={form.coverImageUrl} onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })} placeholder="https://.../course-cover.jpg" style={inputStyle} /><small style={helperStyle}>Optional. Use a stable HTTPS image URL. The fallback course artwork remains available.</small></label>
-            {session?.user?.role === 'ATLAS_ADMIN' && <label style={labelStyle}>Library category<select value={form.sectionId} onChange={(e) => setForm({ ...form, sectionId: e.target.value })} style={inputStyle}><option value="">Uncategorised</option>{sections.map((section) => <option key={section.id} value={section.id}>{section.name}</option>)}</select><small style={helperStyle}>Categories organise the library. They are different from modules inside this course.</small></label>}
-            <label style={labelStyle}>Initial status<select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} style={inputStyle}><option value="DRAFT">Draft</option><option value="REVIEW">Ready for review</option>{session?.user?.role === 'ATLAS_ADMIN' && <option value="PUBLISHED">Published</option>}</select><small style={helperStyle}>{session?.user?.role === 'INSTRUCTOR' ? 'Instructors can save drafts or submit a course for Atlas review.' : 'Draft courses are hidden from schools until published.'}</small></label>
+            <label style={labelStyle}>Course duration<DurationInput totalSeconds={form.durationSeconds} onChange={(durationSeconds) => setForm({ ...form, durationSeconds })} /><small style={helperStyle}>Used for standalone course videos. If lessons are added, lesson durations are used instead.</small></label>
+            <label style={labelStyle}>Course Mux playback ID<input value={form.muxPlaybackId} onChange={(e) => setForm({ ...form, muxPlaybackId: e.target.value })} placeholder="Optional standalone video playback ID" style={inputStyle} /><small style={helperStyle}>Use this when the course is one standalone video without modules or lessons.</small></label>
             </fieldset>
             {session?.user?.role === 'ATLAS_ADMIN' && <fieldset style={fieldSetStyle}><legend style={legendStyle}>School availability</legend><p style={{ ...helperStyle, margin: 0 }}>New courses are available to all active schools by default. Choose selected schools only when this course should be restricted.</p><label style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 8 }}><input type="radio" name="availability" checked={availabilityMode === 'ALL'} onChange={() => { setAvailabilityMode('ALL'); setSelectedSchoolIds(schools.map((school) => school.id)) }} /> All active schools</label><label style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 8 }}><input type="radio" name="availability" checked={availabilityMode === 'SELECTED'} onChange={() => setAvailabilityMode('SELECTED')} /> Selected schools only</label>{availabilityMode === 'SELECTED' && <><div style={{ display: 'flex', gap: 8 }}><button className="text-button" type="button" onClick={() => setSelectedSchoolIds(schools.map((school) => school.id))}>Select all</button><button className="text-button" type="button" onClick={() => setSelectedSchoolIds([])}>Deselect all</button><span style={{ ...helperStyle, marginLeft: 'auto' }}>{selectedSchoolIds.length}/{schools.length} selected</span></div><div style={{ maxHeight: 220, overflowY: 'auto', borderTop: '1px solid var(--line)' }}>{schools.map((school) => <label key={school.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 13 }}><span>{school.name}</span><input type="checkbox" checked={selectedSchoolIds.includes(school.id)} onChange={(e) => setSelectedSchoolIds(e.target.checked ? [...selectedSchoolIds, school.id] : selectedSchoolIds.filter((id) => id !== school.id))} aria-label={`Make this course available to ${school.name}`} /></label>)}</div></>}</fieldset>}
             <label style={labelStyle}>Learner notes<textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes learners should read below the video player" style={{ ...inputStyle, height: 90, paddingTop: 10, resize: 'vertical' }} /></label>
@@ -153,14 +150,15 @@ export default function AdminCoursesPage() {
                   <div style={{ paddingLeft: 28 }}>
                     <input aria-label={`${mod.title} description`} placeholder="Optional module description" value={mod.description} onChange={(e) => { const m = [...modules]; m[mi] = { ...m[mi], description: e.target.value }; setModules(m) }} style={{ ...inputStyle, marginBottom: 8 }} />
                     {mod.lessons.map((lesson, li) => (
-                      <div key={li} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 150px 32px', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                      <div key={li} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 130px 1.2fr 32px', gap: 6, alignItems: 'center', marginBottom: 6 }}>
                         <input placeholder="Lesson title" value={lesson.title} onChange={(e) => { const m = [...modules]; m[mi].lessons[li] = { ...m[mi].lessons[li], title: e.target.value }; setModules(m) }} style={{ ...inputStyle, flex: 1, fontSize: 12, height: 34 }} />
                         <input placeholder="Optional lesson description" value={lesson.description} onChange={(e) => { const m = [...modules]; m[mi].lessons[li] = { ...m[mi].lessons[li], description: e.target.value }; setModules(m) }} style={{ ...inputStyle, fontSize: 12, height: 34 }} />
                         <input aria-label="Lesson duration in seconds" placeholder="Duration seconds" type="number" min="0" value={lesson.durationSeconds || ''} onChange={(e) => { const m = [...modules]; m[mi].lessons[li] = { ...m[mi].lessons[li], durationSeconds: Math.max(0, Number(e.target.value)) }; setModules(m) }} style={{ ...inputStyle, fontSize: 12, height: 34 }} />
+                        <input aria-label="Lesson Mux playback ID" placeholder="Mux playback ID (optional)" value={lesson.muxPlaybackId} onChange={(e) => { const m = [...modules]; m[mi].lessons[li] = { ...m[mi].lessons[li], muxPlaybackId: e.target.value }; setModules(m) }} style={{ ...inputStyle, fontSize: 12, height: 34 }} />
                         <button type="button" className="icon-button" onClick={() => { const m = [...modules]; m[mi].lessons = m[mi].lessons.filter((_, j) => j !== li); setModules(m) }}><Trash2 size={13} style={{ color: '#e53e3e' }} /></button>
                       </div>
                     ))}
-                    <button type="button" className="text-button" style={{ fontSize: 12 }} onClick={() => { const m = [...modules]; m[mi].lessons = [...m[mi].lessons, { title: `Lesson ${m[mi].lessons.length + 1}`, description: '', durationSeconds: 0, sortOrder: m[mi].lessons.length }]; setModules(m) }}>
+                    <button type="button" className="text-button" style={{ fontSize: 12 }} onClick={() => { const m = [...modules]; m[mi].lessons = [...m[mi].lessons, { title: `Lesson ${m[mi].lessons.length + 1}`, description: '', durationSeconds: 0, muxPlaybackId: '', sortOrder: m[mi].lessons.length }]; setModules(m) }}>
                       <Plus size={13} /> Add lesson
                     </button>
                   </div>

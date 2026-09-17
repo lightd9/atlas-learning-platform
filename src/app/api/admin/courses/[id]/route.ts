@@ -71,13 +71,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     const { id } = await params
     await requireOwnedCourseEditor(id)
-    const hasProgress = await prisma.courseProgress.count({ where: { courseId: id } })
-    if (hasProgress > 0) {
-      await prisma.course.update({ where: { id }, data: { published: false, status: 'ARCHIVED' } })
-      return NextResponse.json({ message: 'Course archived (has existing progress)' })
-    }
     await prisma.course.delete({ where: { id } })
-    return NextResponse.json({ message: 'Course deleted' })
+    return NextResponse.json({ message: 'Course permanently deleted' })
   } catch (error) {
     return apiErrorResponse(error, 'Unable to delete course')
   }

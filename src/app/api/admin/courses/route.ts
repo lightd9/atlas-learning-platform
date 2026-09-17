@@ -33,6 +33,7 @@ const courseSchema = z.object({
   coverImageUrl: z.string().trim().url().optional().or(z.literal('')),
   durationMinutes: z.number().int().nonnegative().default(0),
   durationSeconds: z.number().int().nonnegative().default(0),
+  muxPlaybackId: z.string().trim().max(200).optional().or(z.literal('')),
   status: z.enum(['DRAFT', 'REVIEW', 'PUBLISHED', 'ARCHIVED']).default('DRAFT'),
   sectionId: z.string().nullable().optional(),
   notes: z.string().max(10000).optional().or(z.literal('')),
@@ -88,18 +89,22 @@ export async function POST(request: Request) {
     if (existing) return NextResponse.json({ error: 'Slug already taken' }, { status: 409 })
 
     const { modules, resources, ...courseData } = body.data
-    const durationSeconds = modules.reduce((courseTotal, module) => courseTotal + module.lessons.reduce((moduleTotal, lesson) => moduleTotal + lesson.durationSeconds, 0), 0)
-    const requestedStatus = editor.role === 'ATLAS_ADMIN' ? courseData.status : courseData.status === 'REVIEW' ? 'REVIEW' : 'DRAFT'
+    const lessonDurationSeconds = modules.reduce((courseTotal, module) => courseTotal + module.lessons.reduce((moduleTotal, lesson) => moduleTotal + lesson.durationSeconds, 0), 0)
+    const durationSeconds = lessonDurationSeconds > 0 ? lessonDurationSeconds : courseData.durationSeconds
+    const requestedStatus = 'DRAFT'
+    const standaloneModule = courseData.muxPlaybackId && modules.length === 0 ? [{ title: 'Course video', description: 'Standalone course video', sortOrder: 0, lessons: [{ title: courseData.title, description: courseData.description, durationSeconds, muxPlaybackId: courseData.muxPlaybackId, sortOrder: 0 }] }] : modules
+    const { muxPlaybackId: coursePlaybackId, ...persistedCourseData } = courseData
     const course = await prisma.course.create({
       data: {
-        ...courseData,
+        ...persistedCourseData,
+        muxPlaybackId: coursePlaybackId || null,
         durationSeconds,
         durationMinutes: Math.ceil(durationSeconds / 60),
         createdById: editor.id,
         status: requestedStatus,
-        published: requestedStatus === 'PUBLISHED',
+        published: false,
         modules: {
-          create: modules.map((mod) => ({
+          create: standaloneModule.map((mod) => ({
             title: mod.title,
             description: mod.description,
             sortOrder: mod.sortOrder,
@@ -121,7 +126,9 @@ export async function POST(request: Request) {
     })
     return NextResponse.json({ course }, { status: 201 })
   } catch (error) {
-    const message = error instanceof Error && error.message === 'UNAUTHORIZED' ? 'Unauthorized' : 'Unable to create course'
-    return NextResponse.json({ error: message }, { status: message === 'Unauthorized' ? 401 : 403 })
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') return NextResponse.json({ error: 'You are not authorized to create courses.' }, { status: 401 })
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') return NextResponse.json({ error: 'A course with this URL slug already exists.', field: 'slug', suggestion: 'Choose a different slug and try again.' }, { status: 409 })
+    console.error('Course creation failed', error)
+    return NextResponse.json({ error: 'The course could not be created.', suggestion: 'Check the required fields, ensure the slug is unique, and try again.' }, { status: 500 })
   }
 }
