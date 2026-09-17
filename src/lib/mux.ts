@@ -109,7 +109,10 @@ export function verifyMuxWebhookSignature(payload: string, signature: string | n
 
 export async function generateThumbnailUrl(playbackId: string): Promise<string | null> {
   if (!MUX_SIGNING_KEY_ID || !MUX_SIGNING_KEY_PRIVATE_KEY) return null
-  const token = await new SignJWT({ time: 1, width: 640, fit_mode: 'smartcrop' })
+  // Course cards use a landscape frame. Ask Mux for a 16:9 thumbnail so the
+  // source frame is composed for the card rather than returning a portrait
+  // crop from a landscape video.
+  const token = await new SignJWT({ time: 1, width: 640, aspect_ratio: '16:9', fit_mode: 'smartcrop' })
     .setProtectedHeader({ alg: 'RS256', kid: MUX_SIGNING_KEY_ID, typ: 'JWT' })
     .setSubject(playbackId)
     .setAudience('t')

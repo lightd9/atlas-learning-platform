@@ -102,7 +102,11 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
       video.removeAttribute('src')
       video.load()
     }
-  }, [src, initialPosition])
+  // Do not reload the HLS source when the parent updates its saved progress.
+  // `initialPosition` is applied by loadedmetadata for each new source; making
+  // it an effect dependency would tear down and restart playback after every
+  // progress save.
+  }, [src])
 
   // Periodic progress save (every 10 seconds)
   const addWatchedRange = useCallback((start: number, end: number) => {

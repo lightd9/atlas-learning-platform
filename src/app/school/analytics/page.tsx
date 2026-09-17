@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { FileUp } from 'lucide-react'
 import AuthShell from '@/components/AuthShell'
+import AdminShell from '@/components/AdminShell'
 import Metric from '@/components/Metric'
 import type { ApiAnalytics } from '@/types/api'
 
@@ -64,6 +65,8 @@ function AnalyticsPageContent() {
   }, [selectedSchoolId])
 
   const schoolName = selectedSchoolId ? 'Selected school' : session?.user?.schoolId ? 'Your school' : 'Atlas Learning'
+  const Shell: any = selectedSchoolId ? AdminShell : AuthShell
+  const shellActive = selectedSchoolId ? 'analytics' : 'School analytics'
 
   const chart = useMemo(() => {
     const activity = analytics?.learningActivity ?? []
@@ -82,7 +85,7 @@ function AnalyticsPageContent() {
     return `conic-gradient(${stops.join(', ')})`
   }, [analytics])
 
-  return <AuthShell active="School analytics">
+  return <Shell active={shellActive}>
     <div className="page-wrap">
       <div className="page-heading compact">
         <div>
@@ -209,7 +212,7 @@ function AnalyticsPageContent() {
         </>
       }
     </div>
-  </AuthShell>
+  </Shell>
 }
 
 export default function AnalyticsPage() {
