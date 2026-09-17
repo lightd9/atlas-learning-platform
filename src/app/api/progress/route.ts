@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       const coveredSeconds = Math.min(effectiveDuration, rangeCoverage(ranges))
       const percent = Math.min(100, (coveredSeconds / effectiveDuration) * 100)
       const completed = percent >= 95
-      await prisma.lessonProgress.upsert({
+      const lessonProgress = await prisma.lessonProgress.upsert({
         where: { userId_lessonId: { userId: user.id, lessonId } },
         create: { userId: user.id, lessonId, watchedSeconds: coveredSeconds, durationSeconds: effectiveDuration, watchedRanges: JSON.stringify(ranges), percentComplete: percent, status: completed ? 'COMPLETED' : percent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: completed ? new Date() : null, lastWatchedAt: new Date() },
         update: { watchedSeconds: coveredSeconds, durationSeconds: effectiveDuration, watchedRanges: JSON.stringify(ranges), percentComplete: percent, status: completed ? 'COMPLETED' : percent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: completed ? new Date() : null, lastWatchedAt: new Date() },
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
         create: { userId: user.id, courseId, watchedSeconds: watchedTotal, durationSeconds: totalDuration, percentComplete: coursePercent, status: courseCompleted ? 'COMPLETED' : coursePercent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: courseCompleted ? new Date() : null, lastWatchedAt: new Date() },
         update: { watchedSeconds: watchedTotal, durationSeconds: totalDuration, percentComplete: coursePercent, status: courseCompleted ? 'COMPLETED' : coursePercent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: courseCompleted ? new Date() : null, lastWatchedAt: new Date() },
       })
-      return NextResponse.json({ progress: courseProgress })
+      return NextResponse.json({ progress: courseProgress, lessonProgress })
     }
     const progress = await prisma.courseProgress.upsert({
       where: { userId_courseId: { userId: user.id, courseId } },

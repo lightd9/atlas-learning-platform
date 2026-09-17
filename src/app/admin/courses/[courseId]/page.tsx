@@ -9,7 +9,7 @@ import { useToast } from '@/components/Toast'
 import LessonVideoUploader from '@/components/LessonVideoUploader'
 import DurationInput from '@/components/DurationInput'
 import { courseTotalSeconds } from '@/lib/format'
-import type { AdminCourse, ApiCourseSection, ApiCourseModule, ApiCourseResource, ApiLesson } from '@/types/api'
+import type { AdminCourse, ApiCourseModule, ApiCourseResource, ApiLesson } from '@/types/api'
 
 export default function AdminCourseEditPage({ params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = use(params)
@@ -22,7 +22,6 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [form, setForm] = useState({ title: '', description: '', coverImageUrl: '', status: 'DRAFT', sectionId: '', notes: '' })
-  const [sections, setSections] = useState<ApiCourseSection[]>([])
   const [schools, setSchools] = useState<{ id: string; name: string }[]>([])
   const [modules, setModules] = useState<ApiCourseModule[]>([])
   const [archivedModules, setArchivedModules] = useState<ApiCourseModule[]>([])
@@ -40,6 +39,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
   const [playbackCheck, setPlaybackCheck] = useState<Record<string, { checking: boolean; valid?: boolean; error?: string }>>({})
   const [detailsDirty, setDetailsDirty] = useState(false)
   const [contentDirty, setContentDirty] = useState(false)
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
@@ -54,8 +54,8 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
         setCourse(c)
         setForm({ title: c.title, description: c.description, coverImageUrl: c.coverImageUrl || '', status: c.status ?? (c.published ? 'PUBLISHED' : 'DRAFT'), sectionId: c.sectionId || '', notes: c.notes || '' })
         setResources(c.resources ?? [])
-        Promise.all([fetch('/api/admin/course-sections').then((r) => r.json()), fetch(`/api/admin/courses/${courseId}/content`).then((r) => r.json()), fetch(`/api/admin/courses/${courseId}/content?includeArchived=true`).then((r) => r.json()), fetch('/api/admin/schools').then((r) => r.json())]).then(([sectionData, contentData, archivedData, schoolData]) => {
-          setSections(sectionData.sections ?? []); setModules(contentData.modules ?? []); setArchivedModules((archivedData.modules ?? []).filter((module: ApiCourseModule) => module.archived || module.lessons.some((lesson) => lesson.archived)))
+        Promise.all([fetch(`/api/admin/courses/${courseId}/content`).then((r) => r.json()), fetch(`/api/admin/courses/${courseId}/content?includeArchived=true`).then((r) => r.json()), fetch('/api/admin/schools').then((r) => r.json())]).then(([contentData, archivedData, schoolData]) => {
+          setModules(contentData.modules ?? []); setArchivedModules((archivedData.modules ?? []).filter((module: ApiCourseModule) => module.archived || module.lessons.some((lesson) => lesson.archived)))
           const availableSchools = (schoolData.schools ?? []).map((school: any) => ({ id: school.id, name: school.name }))
           setSchools(availableSchools)
           const accessBySchool = new Map((c.schoolAccess ?? []).map((entry: any) => [entry.schoolId, entry.enabled]))
@@ -217,12 +217,6 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                 Learner notes
                 <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes learners should read below the video player" style={{ ...inputStyle, height: 100, paddingTop: 10, resize: 'vertical' }} />
               </label>
-              {session?.user?.role === 'ATLAS_ADMIN' && <label style={labelStyle}>
-                Library category
-                <select value={form.sectionId} onChange={(e) => setForm({ ...form, sectionId: e.target.value })} style={inputStyle}>
-                  <option value="">Uncategorised</option>{sections.map((section) => <option key={section.id} value={section.id}>{section.name}</option>)}
-                </select>
-              </label>}
               <label style={labelStyle}>
                 Status
                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} style={inputStyle}>
@@ -285,11 +279,11 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {modules.map((module, moduleIndex) => <div key={module.id} style={{ border: '1px solid var(--line)', borderRadius: 10, overflow: 'hidden' }}>
                 <div style={{ background: '#f8f9fc', padding: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <ChevronDown size={16} color="var(--muted)" />
+                  <button type="button" className="icon-button" aria-label={`${collapsedModules.has(module.id) ? 'Expand' : 'Collapse'} ${module.title}`} aria-expanded={!collapsedModules.has(module.id)} onClick={() => setCollapsedModules((current) => { const next = new Set(current); if (next.has(module.id)) next.delete(module.id); else next.add(module.id); return next })}><ChevronDown size={16} color="var(--muted)" style={{ transform: collapsedModules.has(module.id) ? 'rotate(-90deg)' : undefined, transition: 'transform 180ms ease' }} /></button>
                   <input aria-label={`Module ${moduleIndex + 1} title`} value={module.title} onChange={(e) => updateModule(module.id, { title: e.target.value })} style={{ ...inputStyle, marginTop: 0, flex: 1, fontWeight: 600 }} />
                   <button className="icon-button" aria-label={`Move ${module.title} up`} disabled={moduleIndex === 0} onClick={() => moveModule(module.id, -1)}><ArrowUp size={16} /></button><button className="icon-button" aria-label={`Move ${module.title} down`} disabled={moduleIndex === modules.length - 1} onClick={() => moveModule(module.id, 1)}><ArrowDown size={16} /></button><button className="icon-button" aria-label={`Archive ${module.title}`} onClick={() => removeModule(module.id)}><Trash2 size={16} /></button>
                 </div>
-                <div style={{ padding: '10px 14px 14px' }}>
+                {!collapsedModules.has(module.id) && <div style={{ padding: '10px 14px 14px' }}>
                   <input aria-label={`${module.title} description`} value={module.description ?? ''} onChange={(e) => updateModule(module.id, { description: e.target.value })} placeholder="Optional module description" style={{ ...inputStyle, marginTop: 0, marginBottom: 10 }} />
                   {module.lessons.map((lesson, lessonIndex) => <div className="lesson-editor-row" key={lesson.id} style={{ padding: '14px 0', borderTop: '1px solid #edf0f5' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '26px 1fr 1.1fr 148px 72px 36px', gap: 8, alignItems: 'center' }}>
@@ -305,7 +299,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                     </div>
                   </div>)}
                   <button className="text-button" onClick={() => addLesson(module.id)} style={{ marginTop: 8 }}><Plus size={15} /> Add lesson</button>
-                </div>
+                </div>}
               </div>)}
             </div>
             {contentError && <p role="alert" style={{ color: '#b42318', fontSize: 12 }}>{contentError}</p>}

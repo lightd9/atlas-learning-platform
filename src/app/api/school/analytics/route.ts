@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server'
-import { requireHeadteacher } from '@/lib/access'
+import { requireAtlasAdmin, requireHeadteacher } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 
 const tones = ['blue', 'mint', 'lilac', 'peach', 'violet']
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const manager = await requireHeadteacher()
-    if (!manager.schoolId) return NextResponse.json({ error: 'No school' }, { status: 400 })
-
-    const schoolId = manager.schoolId
+    const requestedSchoolId = new URL(request.url).searchParams.get('schoolId')
+    let schoolId: string | null = null
+    if (requestedSchoolId) {
+      await requireAtlasAdmin()
+      schoolId = requestedSchoolId
+    } else {
+      const manager = await requireHeadteacher()
+      schoolId = manager.schoolId
+    }
+    if (!schoolId) return NextResponse.json({ error: 'No school' }, { status: 400 })
 
     const [users, courses, allProgress] = await Promise.all([
       prisma.user.findMany({
@@ -87,44 +93,26 @@ export async function GET() {
         return 0
       })
 
-    const progressCounts: Record<string, number> = {}
-    for (const p of allProgress) {
-      const courseTitle = courses.find((c) => c.id === p.courseId)?.title ?? 'Unknown'
-      progressCounts[courseTitle] = (progressCounts[courseTitle] || 0) + Number(p.percentComplete)
-    }
-    const courseCountMap: Record<string, number> = {}
-    for (const p of allProgress) {
-      const courseTitle = courses.find((c) => c.id === p.courseId)?.title ?? 'Unknown'
-      courseCountMap[courseTitle] = (courseCountMap[courseTitle] || 0) + 1
-    }
-
-    const totalProgress = Object.values(progressCounts).reduce((a, b) => a + b, 0) || 1
-    const courseBreakdown = Object.entries(progressCounts)
-      .map(([title, sum], i) => ({
-        title,
-        percent: Math.round((sum / totalProgress) * 100),
-        tone: tones[i % tones.length],
-      }))
-      .sort((a, b) => b.percent - a.percent)
-
-    if (courseBreakdown.length < 3) {
-      const usedTitles = new Set(courseBreakdown.map((c) => c.title))
-      for (const course of courses) {
-        if (courseBreakdown.length >= 3) break
-        if (!usedTitles.has(course.title)) {
-          courseBreakdown.push({ title: course.title, percent: 0, tone: tones[courseBreakdown.length % tones.length] })
+    // Keep the breakdown tied to the actual course progress values. The old
+    // implementation treated the sum of percentages as a pie-chart share,
+    // which made the chart difficult to interpret and excluded untouched
+    // courses entirely.
+    const courseBreakdown = courses
+      .map((course, i) => {
+        const rows = allProgress.filter((p) => p.courseId === course.id)
+        const average = rows.length
+          ? Math.round(rows.reduce((sum, row) => sum + Number(row.percentComplete), 0) / rows.length)
+          : 0
+        const completed = rows.filter((row) => row.status === 'COMPLETED').length
+        return {
+          title: course.title,
+          percent: average,
+          completed,
+          learners: rows.length,
+          tone: tones[i % tones.length],
         }
-      }
-    }
-
-    const notStartedCount = allProgress.filter((p) => p.status === 'NOT_STARTED').length
-    const totalEnrollments = allProgress.length || 1
-    if (courseBreakdown.length >= 3) {
-      const notStartedPercent = Math.round((notStartedCount / totalEnrollments) * 100)
-      if (notStartedPercent > 0) {
-        courseBreakdown.push({ title: 'Not started', percent: notStartedPercent, tone: 'gray' })
-      }
-    }
+      })
+      .sort((a, b) => b.percent - a.percent)
 
     const days = Array.from({ length: 30 }, (_, i) => {
       const d = new Date()

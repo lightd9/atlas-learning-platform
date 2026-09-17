@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { FileUp } from 'lucide-react'
 import AuthShell from '@/components/AuthShell'
@@ -48,19 +49,21 @@ function buildChartPath(series: { minutes: number }[]) {
 
 export default function AnalyticsPage() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
+  const selectedSchoolId = searchParams.get('schoolId')
   const [analytics, setAnalytics] = useState<ApiAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [hover, setHover] = useState<number | null>(null)
   const [activityDays, setActivityDays] = useState<7 | 14 | 30>(30)
 
   useEffect(() => {
-    fetch('/api/school/analytics').then((r) => {
+    fetch(`/api/school/analytics${selectedSchoolId ? `?schoolId=${encodeURIComponent(selectedSchoolId)}` : ''}`).then((r) => {
       if (!r.ok) throw new Error('API error')
       return r.json()
     }).then((d) => { setAnalytics(d); setLoading(false) }).catch(() => setLoading(false))
-  }, [])
+  }, [selectedSchoolId])
 
-  const schoolName = session?.user?.schoolId ? 'Your school' : 'Atlas Learning'
+  const schoolName = selectedSchoolId ? 'Selected school' : session?.user?.schoolId ? 'Your school' : 'Atlas Learning'
 
   const chart = useMemo(() => {
     const activity = analytics?.learningActivity ?? []

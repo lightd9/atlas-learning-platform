@@ -39,6 +39,7 @@ export async function GET() {
         ? Math.round(schoolProgress.reduce((a, p) => a + Number(p.percentComplete), 0) / schoolProgress.length)
         : 0
       return {
+        schoolId: s.id,
         schoolName: s.name,
         teacherCount: s._count.users,
         completionCount: schoolProgress.filter((p) => p.status === 'COMPLETED').length,

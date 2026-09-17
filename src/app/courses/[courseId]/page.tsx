@@ -53,6 +53,21 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
       const response = await fetch('/api/progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ courseId, ...(selectedLesson ? { lessonId: selectedLesson.id } : {}), watchedSeconds, durationSeconds: durationSeconds || selectedLesson?.durationSeconds || course?.durationSeconds || (course?.durationMinutes ? course.durationMinutes * 60 : 1), watchedRanges }) })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error ?? 'Unable to save your progress.')
+      if (data.progress) {
+        setCourse((current) => {
+          if (!current) return current
+          return {
+            ...current,
+            progress: [data.progress],
+            modules: current.modules?.map((module) => ({
+              ...module,
+              lessons: module.lessons.map((lesson) => lesson.id === selectedLesson?.id && data.lessonProgress
+                ? { ...lesson, progress: [data.lessonProgress] }
+                : lesson),
+            })),
+          }
+        })
+      }
       setProgressSaveError('')
     } catch (error) {
       setProgressSaveError(error instanceof Error ? error.message : 'Unable to save your progress.')

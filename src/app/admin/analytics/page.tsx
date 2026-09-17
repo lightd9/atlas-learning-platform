@@ -64,7 +64,7 @@ export default function AdminAnalyticsPage() {
             </thead>
             <tbody>
               {filteredSchools.map((s: any, i: number) => (
-                <tr key={i}>
+                <tr key={i} onClick={() => router.push(`/school/analytics?schoolId=${encodeURIComponent(s.schoolId)}`)} style={{ cursor: 'pointer' }} aria-label={`View ${s.schoolName} analytics`}>
                   <td><strong>{s.schoolName}</strong></td>
                   <td>{s.teacherCount}</td>
                   <td>{s.completionCount}</td>

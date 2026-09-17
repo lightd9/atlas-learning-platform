@@ -35,7 +35,21 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/courses').then((r) => r.json()).then((d) => { setCourses(d.courses ?? []); setLoading(false) }).catch(() => setLoading(false))
+    let active = true
+    const refreshCourses = () => {
+      fetch('/api/courses', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => { if (active) { setCourses(d.courses ?? []); setLoading(false) } })
+        .catch(() => { if (active) setLoading(false) })
+    }
+    refreshCourses()
+    window.addEventListener('focus', refreshCourses)
+    document.addEventListener('visibilitychange', refreshCourses)
+    return () => {
+      active = false
+      window.removeEventListener('focus', refreshCourses)
+      document.removeEventListener('visibilitychange', refreshCourses)
+    }
   }, [])
 
   const mapped = courses.map((c, i) => mapCourse(c, i))
