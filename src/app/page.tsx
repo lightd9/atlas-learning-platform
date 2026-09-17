@@ -250,7 +250,7 @@ export default function HomePage() {
         const placements = content?.TOP_COURSES ?? [];
         // Keep each placement tied to its own course thumbnail. Never borrow an
         // image from another homepage section when a course has no thumbnail.
-        const toImage = (course: any) => course.coverImageUrl || '/course-icon.png';
+        const toImage = (course: any) => course.coverImageUrl || '';
         if (placements.length) setManagedFeaturedCourses(placements.map((course: any, index: number) => ({
           title: course.title,
           category: course.section?.name ?? 'Artificial Intelligence',
@@ -419,7 +419,8 @@ export default function HomePage() {
             {managedRecommendations.map(([title, category, image]) => (
               <article className="atlas-mini-course" key={title}>
                 <div className="atlas-mini-thumb">
-                  <Image src={image} alt="" fill sizes="(max-width: 760px) 100vw, 120px" />
+                  {image ? <img src={image} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none'; event.currentTarget.nextElementSibling?.removeAttribute('hidden') }} /> : null}
+                  <div className="atlas-mini-thumb-placeholder" aria-hidden="true" hidden={Boolean(image)} />
                 </div>
                 <div>
                   <span>{category}</span>
