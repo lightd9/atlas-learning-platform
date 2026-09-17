@@ -15,8 +15,16 @@ export default function PublicNavbar() {
   const [mobileExploreOpen, setMobileExploreOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const [searchCourses, setSearchCourses] = useState(publicCourses);
   const exploreRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch('/api/public/home-content', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((content) => {
+      const explore = content?.EXPLORE ?? [];
+      if (explore.length) setSearchCourses(explore.map((course: any) => ({ title: course.title, category: course.section?.name ?? 'Course', duration: `${course.durationMinutes ?? 0} min`, lessons: 0, status: 'available' as const, image: course.coverImageUrl || '' })));
+    }).catch(() => {});
+  }, []);
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -31,7 +39,7 @@ export default function PublicNavbar() {
 
   const term = query.trim().toLowerCase();
   const results = term
-    ? publicCourses
+    ? searchCourses
         .filter((course) =>
           (course.title + " " + course.category).toLowerCase().includes(term),
         )

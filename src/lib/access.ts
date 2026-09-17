@@ -41,12 +41,18 @@ export async function requireCourseEditor() {
   return user
 }
 
-export const INSTRUCTOR_PERMISSIONS = ['COURSE_CREATE', 'COURSE_EDIT_OWN', 'COURSE_EDIT_ALL', 'COURSE_PUBLISH', 'COURSE_DELETE', 'SCHOOL_ASSIGN', 'ANALYTICS_VIEW'] as const
+export const INSTRUCTOR_PERMISSIONS = ['COURSE_CREATE', 'COURSE_EDIT_OWN', 'COURSE_EDIT_ALL', 'COURSE_PUBLISH', 'COURSE_DELETE', 'SCHOOL_ASSIGN', 'ANALYTICS_VIEW', 'HOME_CONTENT_MANAGE'] as const
 export type InstructorPermission = typeof INSTRUCTOR_PERMISSIONS[number]
 export function hasPermission(user: { role: string; permissions?: unknown }, permission: InstructorPermission) {
   if (user.role === 'ATLAS_ADMIN') return true
   if (user.role === 'ATLAS_EMPLOYEE' && ['COURSE_CREATE', 'COURSE_EDIT_OWN', 'COURSE_EDIT_ALL', 'COURSE_PUBLISH', 'SCHOOL_ASSIGN', 'ANALYTICS_VIEW'].includes(permission)) return true
   return user.role === 'ATLAS_EMPLOYEE' && Array.isArray(user.permissions) && user.permissions.includes(permission)
+}
+
+export async function requireHomeContentManager() {
+  const user = await requireSchoolUser()
+  if (!hasPermission(user, 'HOME_CONTENT_MANAGE')) throw new Error('FORBIDDEN')
+  return user
 }
 
 export async function requireOwnedCourseEditor(courseId: string) {

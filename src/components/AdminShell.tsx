@@ -33,10 +33,11 @@ export default function AdminShell({ children, active }: { children: ReactNode; 
     { key: 'overview', label: 'Overview', icon: <Home size={18} />, href: '/admin' },
     { key: 'schools', label: 'School management', icon: <Building2 size={18} />, href: '/admin/schools' },
     { key: 'courses', label: 'Course management', icon: <BookOpen size={18} />, href: '/admin/courses' },
+    { key: 'home-content', label: 'Home page content', icon: <Home size={18} />, href: '/admin/home-content' },
     { key: 'users', label: 'Users', icon: <Users size={18} />, href: '/admin/users' },
     { key: 'analytics', label: 'Analytics', icon: <BarChart3 size={18} />, href: '/admin/analytics' },
     { key: 'audit', label: 'Audit history', icon: <ClipboardList size={18} />, href: '/admin/audit-logs' },
-  ].filter((item) => isAtlasAdmin || (isInstructor && (item.key === 'overview' || item.key === 'courses')) || (isAtlasEmployee && (item.key === 'overview' || item.key === 'courses' || item.key === 'analytics' || (item.key === 'schools' && employeePermissions.includes('SCHOOL_CREATE')) || (item.key === 'users' && employeePermissions.includes('USER_CREATE')) || (item.key === 'audit' && employeePermissions.includes('AUDIT_VIEW')))))
+  ].filter((item) => isAtlasAdmin || (isInstructor && (item.key === 'overview' || item.key === 'courses')) || (isAtlasEmployee && (item.key === 'overview' || item.key === 'courses' || item.key === 'analytics' || (item.key === 'home-content' && employeePermissions.includes('HOME_CONTENT_MANAGE')) || (item.key === 'schools' && employeePermissions.includes('SCHOOL_CREATE')) || (item.key === 'users' && employeePermissions.includes('USER_CREATE')) || (item.key === 'audit' && employeePermissions.includes('AUDIT_VIEW')))))
 
   return <div className="app-shell">
     <header className="topbar">

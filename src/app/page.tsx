@@ -239,11 +239,36 @@ export default function HomePage() {
   const trackRef = useRef<HTMLDivElement>(null);
   const marqueeRef = useRef<HTMLDivElement>(null);
   const [canScroll, setCanScroll] = useState({ left: false, right: false });
+  const [managedFeaturedCourses, setManagedFeaturedCourses] = useState(featuredCourses);
+  const [managedRecommendations, setManagedRecommendations] = useState(recommendations);
+  const [managedSkills, setManagedSkills] = useState(newSkills);
+
+  useEffect(() => {
+    fetch('/api/public/home-content', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((content) => {
+        const placements = content?.TOP_COURSES ?? [];
+        const toImage = (course: any, index: number) => course.coverImageUrl || featuredCourses[index % featuredCourses.length].image;
+        if (placements.length) setManagedFeaturedCourses(placements.map((course: any, index: number) => ({
+          title: course.title,
+          category: course.section?.name ?? 'Artificial Intelligence',
+          duration: `${course.durationMinutes ?? 0} min`,
+          lessons: 0,
+          status: 'available' as const,
+          image: toImage(course, index),
+        })));
+        const recommended = content?.RECOMMENDED ?? [];
+        if (recommended.length) setManagedRecommendations(recommended.map((course: any, index: number) => [course.title, course.section?.name ?? 'Recommended learning', toImage(course, index)] as const));
+        const unlock = content?.UNLOCK_SOMETHING_NEW ?? [];
+        if (unlock.length) setManagedSkills(unlock.map((course: any, index: number) => [course.title, course.section?.name ?? 'New skill', toImage(course, index)] as const));
+      })
+      .catch(() => {});
+  }, []);
 
   const categoryCourses =
     activeCategory === "All courses"
-      ? featuredCourses
-      : featuredCourses.filter((course) => course.category === activeCategory);
+      ? managedFeaturedCourses
+      : managedFeaturedCourses.filter((course) => course.category === activeCategory);
 
   const updateScrollState = useCallback(() => {
     const marquee = marqueeRef.current;
@@ -389,7 +414,7 @@ export default function HomePage() {
             <Link href="#courses">View pathway</Link>
           </div>
           <div className="atlas-recommendation-list">
-            {recommendations.map(([title, category, image]) => (
+            {managedRecommendations.map(([title, category, image]) => (
               <article className="atlas-mini-course" key={title}>
                 <div className="atlas-mini-thumb">
                   <Image src={image} alt="" fill sizes="(max-width: 760px) 100vw, 120px" />
@@ -544,7 +569,7 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="atlas-skill-grid">
-            {newSkills.map(([title, category, image], index) => (
+            {managedSkills.map(([title, category, image], index) => (
               <article className="atlas-skill-card" key={title}>
                 <div>
                   <Image src={image} alt="" fill sizes="(max-width: 760px) 100vw, 300px" />

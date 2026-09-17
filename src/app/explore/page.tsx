@@ -3,7 +3,8 @@ import Image from "next/image";
 import { ArrowRight, BookOpen, Clock3, Heart, Star } from "lucide-react";
 import PublicFooter from "@/components/PublicFooter";
 import PublicNavbar from "@/components/PublicNavbar";
-import { categoryId, publicCourseCategories, publicCourses } from "@/data/publicCourses";
+import { categoryId, publicCourseCategories, publicCourses as fallbackPublicCourses } from "@/data/publicCourses";
+import { prisma } from "@/lib/prisma";
 
 function CourseStars() {
   return (
@@ -20,6 +21,8 @@ export default async function ExplorePage({
 }) {
   const { q = "" } = await searchParams;
   const query = q.toLowerCase().trim();
+  const placements = await prisma.homePagePlacement.findMany({ where: { section: "EXPLORE", active: true, course: { published: true, status: "PUBLISHED" } }, orderBy: { sortOrder: "asc" }, include: { course: { select: { title: true, description: true, coverImageUrl: true, durationMinutes: true, section: { select: { name: true } } } } } });
+  const publicCourses = placements.length ? placements.map((placement) => ({ title: placement.course.title, category: placement.course.section?.name ?? "Artificial Intelligence", duration: `${placement.course.durationMinutes} min`, lessons: 0, status: "available" as const, image: placement.course.coverImageUrl || "" })) : fallbackPublicCourses;
   const filtered = query
     ? publicCourses.filter((course) =>
         (course.title + " " + course.category).toLowerCase().includes(query),

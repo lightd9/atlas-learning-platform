@@ -10,6 +10,7 @@ const createSchema = z.object({
   email: z.string().trim().email().transform((value) => value.toLowerCase()),
   role: z.enum(['ATLAS_ADMIN', 'ATLAS_EMPLOYEE', 'INSTRUCTOR', 'HEADTEACHER']),
   schoolId: z.string().optional(),
+  permissions: z.array(z.string()).default([]),
 })
 
 export async function GET() {
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
     const invitation = latestPending
       ? await prisma.invitation.update({ where: { id: latestPending.id }, data: { tokenHash, expiresAt, status: 'PENDING' } })
       : await prisma.invitation.create({
-          data: { name: body.data.name, email: body.data.email, role: body.data.role, schoolId: body.data.role === 'HEADTEACHER' ? body.data.schoolId : null, invitedById: admin.id, tokenHash, expiresAt },
+          data: { name: body.data.name, email: body.data.email, role: body.data.role, permissions: body.data.role === 'ATLAS_EMPLOYEE' ? body.data.permissions : [], schoolId: body.data.role === 'HEADTEACHER' ? body.data.schoolId : null, invitedById: admin.id, tokenHash, expiresAt },
         })
     const school = invitation.schoolId ? await prisma.school.findUnique({ where: { id: invitation.schoolId }, select: { name: true } }) : null
     const email = roleInvitationEmail({ name: invitation.name, role: invitation.role, setupToken: rawToken, invitedByName: admin.name, schoolName: school?.name })
