@@ -29,16 +29,24 @@ export async function requireAtlasAdmin() {
   return user
 }
 
+export async function requireAtlasEmployee() {
+  const user = await requireSchoolUser()
+  if (user.role !== 'ATLAS_ADMIN' && user.role !== 'ATLAS_EMPLOYEE') throw new Error('FORBIDDEN')
+  return user
+}
+
 export async function requireCourseEditor() {
   const user = await requireSchoolUser()
-  if (user.role !== 'ATLAS_ADMIN' && user.role !== 'INSTRUCTOR') throw new Error('FORBIDDEN')
+  if (user.role !== 'ATLAS_ADMIN' && user.role !== 'ATLAS_EMPLOYEE' && user.role !== 'INSTRUCTOR') throw new Error('FORBIDDEN')
   return user
 }
 
 export const INSTRUCTOR_PERMISSIONS = ['COURSE_CREATE', 'COURSE_EDIT_OWN', 'COURSE_EDIT_ALL', 'COURSE_PUBLISH', 'COURSE_DELETE', 'SCHOOL_ASSIGN', 'ANALYTICS_VIEW'] as const
 export type InstructorPermission = typeof INSTRUCTOR_PERMISSIONS[number]
 export function hasPermission(user: { role: string; permissions?: unknown }, permission: InstructorPermission) {
-  return user.role === 'ATLAS_ADMIN' || (user.role === 'INSTRUCTOR' && Array.isArray(user.permissions) && user.permissions.includes(permission))
+  if (user.role === 'ATLAS_ADMIN') return true
+  if (user.role === 'ATLAS_EMPLOYEE' && ['COURSE_CREATE', 'COURSE_EDIT_OWN', 'COURSE_EDIT_ALL', 'COURSE_PUBLISH', 'SCHOOL_ASSIGN', 'ANALYTICS_VIEW'].includes(permission)) return true
+  return user.role === 'ATLAS_EMPLOYEE' && Array.isArray(user.permissions) && user.permissions.includes(permission)
 }
 
 export async function requireOwnedCourseEditor(courseId: string) {

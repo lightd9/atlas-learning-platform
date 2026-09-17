@@ -8,7 +8,7 @@ import { roleInvitationEmail, sendEmail } from '@/lib/email'
 const createSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email().transform((value) => value.toLowerCase()),
-  role: z.enum(['ATLAS_ADMIN', 'INSTRUCTOR', 'HEADTEACHER']),
+  role: z.enum(['ATLAS_ADMIN', 'ATLAS_EMPLOYEE', 'INSTRUCTOR', 'HEADTEACHER']),
   schoolId: z.string().optional(),
 })
 

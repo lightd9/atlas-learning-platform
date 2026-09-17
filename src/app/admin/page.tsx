@@ -19,7 +19,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
-    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN' && session?.user?.role !== 'INSTRUCTOR') { router.push('/dashboard'); return }
+    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN' && session?.user?.role !== 'ATLAS_EMPLOYEE' && session?.user?.role !== 'INSTRUCTOR') { router.push('/dashboard'); return }
     if (status === 'authenticated') {
       const endpoint = session?.user?.role === 'INSTRUCTOR' ? '/api/admin/courses' : '/api/admin/analytics'
       fetch(endpoint).then((r) => r.json()).then((d) => { setData(d); setLoading(false) }).catch(() => setLoading(false))

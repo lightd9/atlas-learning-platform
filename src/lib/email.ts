@@ -11,6 +11,12 @@ const roleCopy: Record<UserRole, { label: string; article: 'a' | 'an'; subject: 
     subject: 'You have been invited to administer Atlas Learning',
     description: 'You will be able to manage schools, users, courses, publication, and platform analytics.',
   },
+  ATLAS_EMPLOYEE: {
+    label: 'Atlas Employee',
+    article: 'an',
+    subject: 'You have been invited to the Atlas employee workspace',
+    description: 'You will have access to the Atlas employee workspace.',
+  },
   INSTRUCTOR: {
     label: 'Instructor',
     article: 'an',

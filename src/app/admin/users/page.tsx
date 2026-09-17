@@ -24,7 +24,7 @@ export default function AdminUsersPage() {
   const [setup, setSetup] = useState<{ invitationId?: string; url: string; expiresAt?: string } | null>(null)
   const [editingPermissions, setEditingPermissions] = useState<AdminUser | null>(null)
   const [permissionDraft, setPermissionDraft] = useState<string[]>([])
-  const permissionOptions = [{ key: 'COURSE_CREATE', label: 'Create courses' }, { key: 'COURSE_EDIT_OWN', label: 'Edit own courses' }, { key: 'COURSE_EDIT_ALL', label: 'Edit all courses' }, { key: 'COURSE_PUBLISH', label: 'Publish and unpublish courses' }, { key: 'COURSE_DELETE', label: 'Delete courses' }, { key: 'SCHOOL_ASSIGN', label: 'Assign courses to schools' }, { key: 'ANALYTICS_VIEW', label: 'View analytics' }]
+  const permissionOptions = [{ key: 'COURSE_CREATE', label: 'Create courses' }, { key: 'COURSE_EDIT_OWN', label: 'Edit own courses' }, { key: 'COURSE_EDIT_ALL', label: 'Edit all courses' }, { key: 'COURSE_PUBLISH', label: 'Publish and unpublish courses' }, { key: 'COURSE_DELETE', label: 'Delete courses' }, { key: 'SCHOOL_ASSIGN', label: 'Assign courses to schools' }, { key: 'ANALYTICS_VIEW', label: 'View analytics' }, { key: 'SCHOOL_CREATE', label: 'Create schools' }, { key: 'USER_CREATE', label: 'Create users' }, { key: 'USER_DELETE', label: 'Delete users' }, { key: 'AUDIT_VIEW', label: 'View audit history' }]
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
@@ -104,7 +104,7 @@ export default function AdminUsersPage() {
         </div>
         <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={selectStyle}>
           <option value="">All roles</option>
-          <option value="ATLAS_ADMIN">Atlas Admin</option>
+          <option value="ATLAS_ADMIN">Atlas Admin</option><option value="ATLAS_EMPLOYEE">Atlas Employee</option>
           <option value="INSTRUCTOR">Instructor</option>
           <option value="HEADTEACHER">Headteacher</option>
           <option value="TEACHER">Teacher</option>
@@ -149,13 +149,13 @@ export default function AdminUsersPage() {
                           event.currentTarget.value = ''
                           if (action === 'permissions') {
                             setEditingPermissions(user)
-                            setPermissionDraft(user.permissions ?? ['COURSE_CREATE', 'COURSE_EDIT_OWN'])
+                            setPermissionDraft(user.permissions ?? [])
                           } else handleUserAction(user, action)
                         }}
                       >
                         <option value="" disabled>Choose action</option>
                         <option value="toggle-status">{user.status === 'DISABLED' ? 'Enable' : 'Disable'}</option>
-                        {user.role === 'INSTRUCTOR' && <option value="permissions">Edit permissions</option>}
+                        {user.role === 'ATLAS_EMPLOYEE' && <option value="permissions">Edit permissions</option>}
                         <option value="delete">Delete user</option>
                       </select>
                     )}
@@ -173,6 +173,7 @@ export default function AdminUsersPage() {
 function formatRole(role: string) {
   switch (role) {
     case 'ATLAS_ADMIN': return 'Atlas Admin'
+    case 'ATLAS_EMPLOYEE': return 'Atlas Employee'
     case 'INSTRUCTOR': return 'Instructor'
     case 'HEADTEACHER': return 'Headteacher'
     case 'TEACHER': return 'Teacher'

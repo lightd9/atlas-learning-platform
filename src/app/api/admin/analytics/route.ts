@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { requireAtlasAdmin } from '@/lib/access'
+import { requireAtlasEmployee } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 
 const tones = ['blue', 'mint', 'lilac', 'peach', 'violet']
 
 export async function GET() {
   try {
-    await requireAtlasAdmin()
+    await requireAtlasEmployee()
 
     const [schools, allSchools, courses, publishedCourses, allProgress, invitations, recentCourses, incompleteCourses] = await Promise.all([
       prisma.school.findMany({

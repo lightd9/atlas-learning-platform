@@ -31,7 +31,7 @@ export default function AdminCoursesPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
-    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN' && session?.user?.role !== 'INSTRUCTOR') { router.push('/dashboard'); return }
+    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN' && session?.user?.role !== 'ATLAS_EMPLOYEE' && session?.user?.role !== 'INSTRUCTOR') { router.push('/dashboard'); return }
     if (status === 'authenticated') {
       Promise.all([fetch('/api/admin/courses').then((r) => r.json()), session?.user?.role === 'ATLAS_ADMIN' ? fetch('/api/admin/course-sections').then((r) => r.json()) : Promise.resolve({ sections: [] }), session?.user?.role === 'ATLAS_ADMIN' ? fetch('/api/admin/schools').then((r) => r.json()) : Promise.resolve({ schools: [] })]).then(([courseData, sectionData, schoolData]) => { const activeSchools = (schoolData.schools ?? []).filter((school: { active?: boolean }) => school.active !== false); setCourses(courseData.courses ?? []); setSections(sectionData.sections ?? []); setSchools(activeSchools); setSelectedSchoolIds(activeSchools.map((school: { id: string }) => school.id)); setLoading(false) }).catch(() => setLoading(false))
     }

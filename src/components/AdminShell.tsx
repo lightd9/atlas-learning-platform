@@ -19,6 +19,8 @@ export default function AdminShell({ children, active }: { children: ReactNode; 
   const pathname = usePathname()
   const { data: session } = useSession()
   const isAtlasAdmin = session?.user?.role === 'ATLAS_ADMIN'
+  const isAtlasEmployee = session?.user?.role === 'ATLAS_EMPLOYEE'
+  const employeePermissions = Array.isArray(session?.user?.permissions) ? session.user.permissions as string[] : []
   const isInstructor = session?.user?.role === 'INSTRUCTOR'
   const initials = session?.user?.name ? getInitials(session.user.name) : '??'
   const [schoolName, setSchoolName] = useState<string | null>(null)
@@ -34,7 +36,7 @@ export default function AdminShell({ children, active }: { children: ReactNode; 
     { key: 'users', label: 'Users', icon: <Users size={18} />, href: '/admin/users' },
     { key: 'analytics', label: 'Analytics', icon: <BarChart3 size={18} />, href: '/admin/analytics' },
     { key: 'audit', label: 'Audit history', icon: <ClipboardList size={18} />, href: '/admin/audit-logs' },
-  ].filter((item) => isAtlasAdmin || (isInstructor && (item.key === 'overview' || item.key === 'courses')))
+  ].filter((item) => isAtlasAdmin || (isInstructor && (item.key === 'overview' || item.key === 'courses')) || (isAtlasEmployee && (item.key === 'overview' || item.key === 'courses' || item.key === 'analytics' || (item.key === 'schools' && employeePermissions.includes('SCHOOL_CREATE')) || (item.key === 'users' && employeePermissions.includes('USER_CREATE')) || (item.key === 'audit' && employeePermissions.includes('AUDIT_VIEW')))))
 
   return <div className="app-shell">
     <header className="topbar">
@@ -49,7 +51,7 @@ export default function AdminShell({ children, active }: { children: ReactNode; 
         <span className="school-name">{schoolName || 'Atlas Learning'}</span>
         <NotificationBell />
         <div className="avatar">{initials}</div>
-        <span className="user-name">{session?.user?.name || 'Loading...'}<small>{isInstructor ? 'Instructor' : 'Atlas Admin'}</small></span>
+        <span className="user-name">{session?.user?.name || 'Loading...'}<small>{isInstructor ? 'Instructor' : session?.user?.role === 'ATLAS_EMPLOYEE' ? 'Atlas Employee' : 'Atlas Admin'}</small></span>
       </div>
     </header>
     <div className="body-layout">

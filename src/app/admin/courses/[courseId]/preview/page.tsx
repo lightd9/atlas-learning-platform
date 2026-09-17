@@ -21,7 +21,7 @@ export default function AdminCoursePreviewPage({ params }: { params: Promise<{ c
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
-    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN' && session?.user?.role !== 'INSTRUCTOR') { router.push('/dashboard'); return }
+    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN' && session?.user?.role !== 'ATLAS_EMPLOYEE' && session?.user?.role !== 'INSTRUCTOR') { router.push('/dashboard'); return }
     if (status === 'authenticated') {
       fetch(`/api/admin/courses/${courseId}`).then(async (response) => {
         const data = await response.json()

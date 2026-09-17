@@ -38,7 +38,7 @@ export default function LoginForm() {
       setError('Invalid email or password. Please try again.')
     } else {
       const session = await getSession()
-      const destination = session?.user?.role === 'ATLAS_ADMIN'
+      const destination = session?.user?.role === 'ATLAS_ADMIN' || session?.user?.role === 'ATLAS_EMPLOYEE'
         ? '/admin'
         : session?.user?.role === 'INSTRUCTOR'
           ? '/admin/courses'
@@ -77,7 +77,6 @@ export default function LoginForm() {
     </div>
   </div>
 }
-
 
 
 

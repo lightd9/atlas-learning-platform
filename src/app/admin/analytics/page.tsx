@@ -16,7 +16,7 @@ export default function AdminAnalyticsPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
-    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN') { router.push('/dashboard'); return }
+    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN' && session?.user?.role !== 'ATLAS_EMPLOYEE') { router.push('/dashboard'); return }
     if (status === 'authenticated') {
       fetch('/api/admin/analytics').then((r) => r.json()).then((d) => { setData(d); setLoading(false) }).catch(() => setLoading(false))
     }
