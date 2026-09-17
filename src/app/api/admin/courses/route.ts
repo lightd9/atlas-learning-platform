@@ -30,10 +30,10 @@ const courseSchema = z.object({
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/),
   title: z.string().min(1).max(200),
   description: z.string().min(1),
-  durationMinutes: z.number().int().positive(),
+  coverImageUrl: z.string().trim().url().optional().or(z.literal('')),
+  durationMinutes: z.number().int().nonnegative().default(0),
   durationSeconds: z.number().int().nonnegative().default(0),
-  published: z.boolean().default(true),
-  muxPlaybackId: z.string().optional(),
+  status: z.enum(['DRAFT', 'REVIEW', 'PUBLISHED', 'ARCHIVED']).default('DRAFT'),
   sectionId: z.string().nullable().optional(),
   notes: z.string().max(10000).optional().or(z.literal('')),
   resources: z.array(resourceSchema).default([]),
@@ -57,9 +57,11 @@ export async function GET() {
       slug: c.slug,
       title: c.title,
       description: c.description,
+      coverImageUrl: c.coverImageUrl,
       durationMinutes: c.durationMinutes,
       durationSeconds: c.durationSeconds,
       published: c.published,
+      status: c.status,
       muxPlaybackId: c.muxPlaybackId,
       sectionId: c.sectionId,
       section: c.section,
@@ -86,11 +88,16 @@ export async function POST(request: Request) {
     if (existing) return NextResponse.json({ error: 'Slug already taken' }, { status: 409 })
 
     const { modules, resources, ...courseData } = body.data
+    const durationSeconds = modules.reduce((courseTotal, module) => courseTotal + module.lessons.reduce((moduleTotal, lesson) => moduleTotal + lesson.durationSeconds, 0), 0)
+    const requestedStatus = editor.role === 'ATLAS_ADMIN' ? courseData.status : courseData.status === 'REVIEW' ? 'REVIEW' : 'DRAFT'
     const course = await prisma.course.create({
       data: {
         ...courseData,
+        durationSeconds,
+        durationMinutes: Math.ceil(durationSeconds / 60),
         createdById: editor.id,
-        published: editor.role === 'ATLAS_ADMIN' ? courseData.published : false,
+        status: requestedStatus,
+        published: requestedStatus === 'PUBLISHED',
         modules: {
           create: modules.map((mod) => ({
             title: mod.title,

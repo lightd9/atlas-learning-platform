@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Save, Plus, Trash2, Video, ChevronDown } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, Save, Plus, Trash2, Video, ChevronDown } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { useToast } from '@/components/Toast'
 import LessonVideoUploader from '@/components/LessonVideoUploader'
@@ -21,21 +21,25 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
   const [loadError, setLoadError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [form, setForm] = useState({ title: '', description: '', durationSeconds: 1200, published: true, muxPlaybackId: '', sectionId: '', notes: '' })
+  const [form, setForm] = useState({ title: '', description: '', coverImageUrl: '', status: 'DRAFT', sectionId: '', notes: '' })
   const [sections, setSections] = useState<ApiCourseSection[]>([])
   const [schools, setSchools] = useState<{ id: string; name: string }[]>([])
   const [modules, setModules] = useState<ApiCourseModule[]>([])
+  const [archivedModules, setArchivedModules] = useState<ApiCourseModule[]>([])
   const [contentSaving, setContentSaving] = useState(false)
   const [contentSaved, setContentSaved] = useState(false)
   const [contentError, setContentError] = useState('')
   const [resources, setResources] = useState<ApiCourseResource[]>([])
   const [resourceForm, setResourceForm] = useState({ title: '', description: '', url: '', fileName: '' })
   const [resourceError, setResourceError] = useState('')
+  const [editingResourceId, setEditingResourceId] = useState<string | null>(null)
   const [selectedSchoolIds, setSelectedSchoolIds] = useState<string[]>([])
   const [savedSchoolIds, setSavedSchoolIds] = useState<string[]>([])
   const [accessSaving, setAccessSaving] = useState(false)
   const [accessSaved, setAccessSaved] = useState(false)
   const [playbackCheck, setPlaybackCheck] = useState<Record<string, { checking: boolean; valid?: boolean; error?: string }>>({})
+  const [detailsDirty, setDetailsDirty] = useState(false)
+  const [contentDirty, setContentDirty] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
@@ -48,10 +52,10 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
       }).then((d) => {
         const c = d.course
         setCourse(c)
-        setForm({ title: c.title, description: c.description, durationSeconds: courseTotalSeconds(c), published: c.published, muxPlaybackId: c.muxPlaybackId || '', sectionId: c.sectionId || '', notes: c.notes || '' })
+        setForm({ title: c.title, description: c.description, coverImageUrl: c.coverImageUrl || '', status: c.status ?? (c.published ? 'PUBLISHED' : 'DRAFT'), sectionId: c.sectionId || '', notes: c.notes || '' })
         setResources(c.resources ?? [])
-        Promise.all([fetch('/api/admin/course-sections').then((r) => r.json()), fetch(`/api/admin/courses/${courseId}/content`).then((r) => r.json()), fetch('/api/admin/schools').then((r) => r.json())]).then(([sectionData, contentData, schoolData]) => {
-          setSections(sectionData.sections ?? []); setModules(contentData.modules ?? [])
+        Promise.all([fetch('/api/admin/course-sections').then((r) => r.json()), fetch(`/api/admin/courses/${courseId}/content`).then((r) => r.json()), fetch(`/api/admin/courses/${courseId}/content?includeArchived=true`).then((r) => r.json()), fetch('/api/admin/schools').then((r) => r.json())]).then(([sectionData, contentData, archivedData, schoolData]) => {
+          setSections(sectionData.sections ?? []); setModules(contentData.modules ?? []); setArchivedModules((archivedData.modules ?? []).filter((module: ApiCourseModule) => module.archived || module.lessons.some((lesson) => lesson.archived)))
           const availableSchools = (schoolData.schools ?? []).map((school: any) => ({ id: school.id, name: school.name }))
           setSchools(availableSchools)
           const accessBySchool = new Map((c.schoolAccess ?? []).map((entry: any) => [entry.schoolId, entry.enabled]))
@@ -63,6 +67,13 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
     }
   }, [status, session, router, courseId])
 
+  useEffect(() => {
+    const hasUnsavedChanges = detailsDirty || contentDirty || Boolean(editingResourceId)
+    const handler = (event: BeforeUnloadEvent) => { if (hasUnsavedChanges) { event.preventDefault(); event.returnValue = '' } }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [detailsDirty, contentDirty, editingResourceId])
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -70,10 +81,10 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
     const res = await fetch(`/api/admin/courses/${courseId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, durationMinutes: Math.max(1, Math.round(form.durationSeconds / 60)) }),
+      body: JSON.stringify(form),
     })
     setSaving(false)
-    if (res.ok) { setSaved(true); toast('Changes saved', 'success') }
+    if (res.ok) { setSaved(true); setDetailsDirty(false); toast('Changes saved', 'success') }
     else toast('Unable to save course', 'error')
   }
 
@@ -85,10 +96,12 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
     setModules(modules.map((module) => module.id === moduleId ? { ...module, lessons: [...module.lessons, { id: `new-lesson-${Date.now()}`, title: `Lesson ${module.lessons.length + 1}`, description: '', durationSeconds: 0, muxPlaybackId: '', sortOrder: module.lessons.length, published: true, progress: [] }] } : module))
   }
 
-  function updateModule(moduleId: string, patch: Partial<ApiCourseModule>) { setModules(modules.map((module) => module.id === moduleId ? { ...module, ...patch } : module)) }
-  function updateLesson(moduleId: string, lessonId: string, patch: Partial<ApiLesson>) { setModules(modules.map((module) => module.id === moduleId ? { ...module, lessons: module.lessons.map((lesson) => lesson.id === lessonId ? { ...lesson, ...patch } : lesson) } : module)) }
-  function removeModule(moduleId: string) { setModules(modules.filter((module) => module.id !== moduleId).map((module, index) => ({ ...module, sortOrder: index }))) }
-  function removeLesson(moduleId: string, lessonId: string) { setModules(modules.map((module) => module.id === moduleId ? { ...module, lessons: module.lessons.filter((lesson) => lesson.id !== lessonId).map((lesson, index) => ({ ...lesson, sortOrder: index })) } : module)) }
+  function updateModule(moduleId: string, patch: Partial<ApiCourseModule>) { setContentDirty(true); setModules(modules.map((module) => module.id === moduleId ? { ...module, ...patch } : module)) }
+  function updateLesson(moduleId: string, lessonId: string, patch: Partial<ApiLesson>) { setContentDirty(true); setModules(modules.map((module) => module.id === moduleId ? { ...module, lessons: module.lessons.map((lesson) => lesson.id === lessonId ? { ...lesson, ...patch } : lesson) } : module)) }
+  function removeModule(moduleId: string) { if (!window.confirm('Archive this module and its lessons? Learner progress will be preserved.')) return; setModules(modules.filter((module) => module.id !== moduleId).map((module, index) => ({ ...module, sortOrder: index }))) }
+  function removeLesson(moduleId: string, lessonId: string) { if (!window.confirm('Archive this lesson? Learner progress will be preserved.')) return; setModules(modules.map((module) => module.id === moduleId ? { ...module, lessons: module.lessons.filter((lesson) => lesson.id !== lessonId).map((lesson, index) => ({ ...lesson, sortOrder: index })) } : module)) }
+  function moveModule(moduleId: string, direction: -1 | 1) { const index = modules.findIndex((module) => module.id === moduleId); const target = index + direction; if (index < 0 || target < 0 || target >= modules.length) return; const next = [...modules]; [next[index], next[target]] = [next[target], next[index]]; setModules(next.map((module, sortOrder) => ({ ...module, sortOrder }))) }
+  function moveLesson(moduleId: string, lessonId: string, direction: -1 | 1) { setModules(modules.map((module) => { if (module.id !== moduleId) return module; const index = module.lessons.findIndex((lesson) => lesson.id === lessonId); const target = index + direction; if (index < 0 || target < 0 || target >= module.lessons.length) return module; const lessons = [...module.lessons]; [lessons[index], lessons[target]] = [lessons[target], lessons[index]]; return { ...module, lessons: lessons.map((lesson, sortOrder) => ({ ...lesson, sortOrder })) } })) }
 
   async function checkPlayback(moduleId: string, lessonId: string) {
     const playbackId = modules.find((module) => module.id === moduleId)?.lessons.find((lesson) => lesson.id === lessonId)?.muxPlaybackId
@@ -110,7 +123,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
     const data = await res.json()
     setContentSaving(false)
     if (!res.ok) { const message = data.error ?? 'Unable to save course content'; setContentError(message); toast(message, 'error'); return }
-    setModules(data.modules ?? modules); setContentSaved(true); toast('Course content saved', 'success')
+    setModules(data.modules ?? modules); setContentSaved(true); setContentDirty(false); toast('Course content saved', 'success')
   }
 
   async function saveSchoolAccess() {
@@ -148,6 +161,34 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
     else toast('Unable to remove resource', 'error')
   }
 
+  async function saveResource(resource: ApiCourseResource) {
+    setResourceError('')
+    const response = await fetch(`/api/admin/courses/${courseId}/resources`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(resource) })
+    const data = await response.json()
+    if (!response.ok) { setResourceError(data.error ?? 'Unable to update resource'); return }
+    setResources(resources.map((item) => item.id === resource.id ? data.resource : item))
+    setEditingResourceId(null); toast('Resource updated', 'success')
+  }
+
+  async function moveResource(resourceId: string, direction: -1 | 1) {
+    const index = resources.findIndex((resource) => resource.id === resourceId)
+    const target = index + direction
+    if (index < 0 || target < 0 || target >= resources.length) return
+    const next = [...resources]; [next[index], next[target]] = [next[target], next[index]]
+    const ordered = next.map((resource, sortOrder) => ({ ...resource, sortOrder }))
+    setResources(ordered)
+    const responses = await Promise.all(ordered.map((resource) => fetch(`/api/admin/courses/${courseId}/resources`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(resource) })))
+    if (responses.some((response) => !response.ok)) { setResourceError('Unable to save resource order. Refresh and try again.'); return }
+    toast('Resource order updated', 'success')
+  }
+
+  async function restoreContent(moduleId?: string, lessonId?: string) {
+    const response = await fetch(`/api/admin/courses/${courseId}/content`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ moduleId, lessonId }) })
+    if (!response.ok) { toast('Unable to restore content', 'error'); return }
+    const refreshed = await fetch(`/api/admin/courses/${courseId}/content`).then((r) => r.json())
+    setModules(refreshed.modules ?? []); toast('Content restored', 'success')
+  }
+
   return <AdminShell active="courses">
     <div className="page-wrap">
       <button className="text-button" onClick={() => router.push('/admin/courses')} style={{ marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -162,7 +203,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
           </div>
 
           <div className="course-editor-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24 }}>
-            <form onSubmit={handleSave} className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form onSubmit={handleSave} onChange={() => setDetailsDirty(true)} className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <label style={labelStyle}>
                 Title
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required style={inputStyle} />
@@ -171,28 +212,27 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                 Description
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required style={{ ...inputStyle, height: 100, paddingTop: 10, resize: 'vertical' }} />
               </label>
+              <label style={labelStyle}>Cover image URL<input type="url" value={form.coverImageUrl} onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })} placeholder="https://.../course-cover.jpg" style={inputStyle} /><small style={{ color: 'var(--muted)', fontSize: 11, fontWeight: 400 }}>Optional stable HTTPS image URL. Leave empty to use the default artwork.</small></label>
               <label style={labelStyle}>
                 Learner notes
                 <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes learners should read below the video player" style={{ ...inputStyle, height: 100, paddingTop: 10, resize: 'vertical' }} />
               </label>
-              <label style={labelStyle}>
-                Duration (minutes and seconds)
-                <DurationInput totalSeconds={form.durationSeconds} onChange={(totalSeconds) => setForm({ ...form, durationSeconds: totalSeconds })} />
-              </label>
-              <label style={labelStyle}>
-                Course section
+              {session?.user?.role === 'ATLAS_ADMIN' && <label style={labelStyle}>
+                Library category
                 <select value={form.sectionId} onChange={(e) => setForm({ ...form, sectionId: e.target.value })} style={inputStyle}>
-                  <option value="">Unsectioned</option>{sections.map((section) => <option key={section.id} value={section.id}>{section.name}</option>)}
+                  <option value="">Uncategorised</option>{sections.map((section) => <option key={section.id} value={section.id}>{section.name}</option>)}
                 </select>
-              </label>
+              </label>}
               <label style={labelStyle}>
-                Mux Playback ID
-                <input value={form.muxPlaybackId} onChange={(e) => setForm({ ...form, muxPlaybackId: e.target.value })} placeholder="e.g. fV2K7U6G00G02T1BU00200Z00C00G" style={inputStyle} />
+                Status
+                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} style={inputStyle}>
+                  <option value="DRAFT">Draft</option><option value="REVIEW">Ready for review</option>
+                  {session?.user?.role === 'ATLAS_ADMIN' && <><option value="PUBLISHED">Published</option><option value="ARCHIVED">Archived</option></>}
+                </select>
+                <small style={{ color: 'var(--muted)', fontSize: 11, fontWeight: 400 }}>{session?.user?.role === 'INSTRUCTOR' ? 'Only Atlas Admins can publish. You can submit this course for review.' : 'Only published courses are visible to schools.'}</small>
               </label>
-              <label style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} />
-                Published (visible to schools)
-              </label>
+              <div style={{ padding: '10px 12px', borderRadius: 8, background: '#f7f8fb', color: 'var(--muted)', fontSize: 12 }}><strong style={{ color: 'var(--navy)' }}>Course duration: </strong>{Math.floor(courseTotalSeconds(course) / 60)} min {courseTotalSeconds(course) % 60 ? `${courseTotalSeconds(course) % 60} sec` : ''}<br /><small>Calculated from the lesson durations below.</small></div>
+              {course.muxPlaybackId && <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #f0d59a', background: '#fffaf0', color: '#7a5414', fontSize: 12 }}><strong>Legacy course video retained.</strong> It has been preserved as a lesson for compatibility. Add or manage videos from individual lessons.</div>}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button type="submit" className="primary-button" disabled={saving}>
                   <Save size={17} /> {saving ? 'Saving...' : 'Save changes'}
@@ -204,7 +244,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
             <div>
               {session?.user?.role === 'ATLAS_ADMIN' && <div className="panel" style={{ marginBottom: 16 }}>
                 <h3 style={{ margin: '0 0 12px', fontSize: 14 }}>School access</h3>
-                <p className="muted" style={{ fontSize: 12 }}>Courses are available to every active school by default. Change the selection to create school-specific access rules.</p>
+                <p className="muted" style={{ fontSize: 12 }}>All active schools is the default. Selecting fewer schools changes this course to selected-school availability; selecting all restores the global default.</p>
                 {schools.length > 0 ? (
                   <>
                   <div style={{ display: 'flex', gap: 8, marginTop: 12, marginBottom: 8 }}><button className="text-button" onClick={() => setSelectedSchoolIds(schools.map((school) => school.id))}>Select all</button><button className="text-button" onClick={() => setSelectedSchoolIds([])}>Deselect all</button><span className="muted" style={{ marginLeft: 'auto', fontSize: 11 }}>{selectedSchoolIds.length}/{schools.length} selected</span></div>
@@ -230,7 +270,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                 <h3 style={{ margin: '0 0 12px', fontSize: 14 }}>Stats</h3>
                 <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <span>Enrollments: <strong>{course.progressCount}</strong></span>
-                  <span>School access entries: <strong>{course.schoolAccessCount}</strong></span>
+                  <span>Available to: <strong>{course.schoolAccessCount}</strong> active schools</span>
                 </div>
               </div>
             </div>
@@ -239,7 +279,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
           <section className="panel" style={{ marginTop: 24 }}>
             <div className="panel-head">
               <div><p className="eyebrow">Learning structure</p><h3>Modules & lessons</h3><p className="muted" style={{ fontSize: 12 }}>Build the real course content learners will see. Each lesson can have its own Mux playback ID and duration.</p></div>
-              <button className="secondary-button" onClick={addModule}><Plus size={16} /> Add module</button>
+              <button className="secondary-button" onClick={() => { setContentDirty(true); addModule() }}><Plus size={16} /> Add module</button>
             </div>
             {modules.length === 0 && <div style={{ border: '1px dashed #cdd6e5', borderRadius: 10, padding: 28, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>No modules yet. Add a module to start building this course.</div>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -247,17 +287,17 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                 <div style={{ background: '#f8f9fc', padding: 14, display: 'flex', gap: 10, alignItems: 'center' }}>
                   <ChevronDown size={16} color="var(--muted)" />
                   <input aria-label={`Module ${moduleIndex + 1} title`} value={module.title} onChange={(e) => updateModule(module.id, { title: e.target.value })} style={{ ...inputStyle, marginTop: 0, flex: 1, fontWeight: 600 }} />
-                  <button className="icon-button" aria-label={`Delete ${module.title}`} onClick={() => removeModule(module.id)}><Trash2 size={16} /></button>
+                  <button className="icon-button" aria-label={`Move ${module.title} up`} disabled={moduleIndex === 0} onClick={() => moveModule(module.id, -1)}><ArrowUp size={16} /></button><button className="icon-button" aria-label={`Move ${module.title} down`} disabled={moduleIndex === modules.length - 1} onClick={() => moveModule(module.id, 1)}><ArrowDown size={16} /></button><button className="icon-button" aria-label={`Archive ${module.title}`} onClick={() => removeModule(module.id)}><Trash2 size={16} /></button>
                 </div>
                 <div style={{ padding: '10px 14px 14px' }}>
                   <input aria-label={`${module.title} description`} value={module.description ?? ''} onChange={(e) => updateModule(module.id, { description: e.target.value })} placeholder="Optional module description" style={{ ...inputStyle, marginTop: 0, marginBottom: 10 }} />
                   {module.lessons.map((lesson, lessonIndex) => <div className="lesson-editor-row" key={lesson.id} style={{ padding: '14px 0', borderTop: '1px solid #edf0f5' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '26px 1fr 1.1fr 148px 36px', gap: 8, alignItems: 'center' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '26px 1fr 1.1fr 148px 72px 36px', gap: 8, alignItems: 'center' }}>
                       <span style={{ fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>{lessonIndex + 1}</span>
                       <input aria-label="Lesson title" value={lesson.title} onChange={(e) => updateLesson(module.id, lesson.id, { title: e.target.value })} placeholder="Lesson title" style={smallInputStyle} />
                       <input aria-label="Lesson description" value={lesson.description ?? ''} onChange={(e) => updateLesson(module.id, lesson.id, { description: e.target.value })} placeholder="Description" style={smallInputStyle} />
                       <DurationInput compact totalSeconds={lesson.durationSeconds} onChange={(totalSeconds) => updateLesson(module.id, lesson.id, { durationSeconds: totalSeconds })} />
-                      <button className="icon-button" aria-label={`Delete ${lesson.title}`} onClick={() => removeLesson(module.id, lesson.id)}><Trash2 size={15} /></button>
+                      <span style={{ display: 'flex', gap: 4 }}><button className="icon-button" aria-label={`Move ${lesson.title} up`} disabled={lessonIndex === 0} onClick={() => moveLesson(module.id, lesson.id, -1)}><ArrowUp size={14} /></button><button className="icon-button" aria-label={`Move ${lesson.title} down`} disabled={lessonIndex === module.lessons.length - 1} onClick={() => moveLesson(module.id, lesson.id, 1)}><ArrowDown size={14} /></button></span><button className="icon-button" aria-label={`Archive ${lesson.title}`} onClick={() => removeLesson(module.id, lesson.id)}><Trash2 size={15} /></button>
                     </div>
                     <div style={{ margin: '10px 0 0 34px' }}>
                       {lesson.id.startsWith('new-') ? <div style={{ border: '1px dashed var(--line)', borderRadius: 9, padding: 12, color: 'var(--muted)', fontSize: 12 }}><Video size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />Save modules & lessons before uploading a video.</div> : <LessonVideoUploader courseId={courseId} lessonId={lesson.id} currentPlaybackId={lesson.muxPlaybackId} onReady={(playbackId, durationSeconds) => updateLesson(module.id, lesson.id, { muxPlaybackId: playbackId, ...(durationSeconds ? { durationSeconds } : {}) })} />}
@@ -272,10 +312,12 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18 }}><button className="primary-button" onClick={saveContent} disabled={contentSaving}><Save size={16} /> {contentSaving ? 'Saving content...' : 'Save modules & lessons'}</button>{contentSaved && <span style={{ color: 'var(--green)', fontSize: 13 }}>Content saved</span>}</div>
           </section>
 
+          {archivedModules.length > 0 && <section className="panel" style={{ marginTop: 24 }}><div className="panel-head"><div><p className="eyebrow">Content recovery</p><h3>Archived modules and lessons</h3><p className="muted" style={{ fontSize: 12 }}>Archived content is hidden from learners but its progress history is preserved.</p></div></div>{archivedModules.map((module) => <div key={module.id} style={{ borderBottom: '1px solid var(--line)', padding: '10px 0' }}>{module.archived && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span><strong>{module.title}</strong> <small className="muted">Module</small></span><button className="secondary-button" type="button" onClick={() => restoreContent(module.id)}>Restore module</button></div>}{!module.archived && module.lessons.filter((lesson) => lesson.archived).map((lesson) => <div key={lesson.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 0 0 18px' }}><span>{lesson.title} <small className="muted">Lesson</small></span><button className="text-button" type="button" onClick={() => restoreContent(undefined, lesson.id)}>Restore</button></div>)}</div>)}</section>}
+
           <section className="panel" style={{ marginTop: 24 }}>
             <div className="panel-head"><div><p className="eyebrow">Learning materials</p><h3>Downloadable resources</h3><p className="muted" style={{ fontSize: 12 }}>Add links to PDFs, worksheets, templates or other files learners should download.</p></div></div>
-            {resources.length > 0 && <div style={{ marginBottom: 18 }}>{resources.map((resource) => <div key={resource.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--line)' }}><div style={{ flex: 1 }}><strong style={{ fontSize: 13 }}>{resource.title}</strong><small style={{ display: 'block', color: 'var(--muted)', marginTop: 3 }}>{resource.fileName || resource.url}</small></div><button className="text-button" onClick={() => deleteResource(resource.id)} style={{ color: '#b42318' }}>Remove</button></div>)}</div>}
-            <form className="resource-form" onSubmit={addResource} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 1fr auto', gap: 8, alignItems: 'end' }}><label style={labelStyle}>Title<input required value={resourceForm.title} onChange={(e) => setResourceForm({ ...resourceForm, title: e.target.value })} placeholder="Course worksheet" style={smallInputStyle} /></label><label style={labelStyle}>Download URL<input required type="url" value={resourceForm.url} onChange={(e) => setResourceForm({ ...resourceForm, url: e.target.value })} placeholder="https://..." style={smallInputStyle} /></label><label style={labelStyle}>File name<input value={resourceForm.fileName} onChange={(e) => setResourceForm({ ...resourceForm, fileName: e.target.value })} placeholder="worksheet.pdf" style={smallInputStyle} /></label><button className="secondary-button" type="submit"><Plus size={15} /> Add</button></form>
+            {resources.length > 0 && <div style={{ marginBottom: 18 }}>{resources.map((resource, index) => <div key={resource.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--line)' }}>{editingResourceId === resource.id ? <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.4fr 1fr auto', gap: 8, alignItems: 'end' }}><label style={labelStyle}>Title<input value={resource.title} onChange={(e) => setResources(resources.map((item) => item.id === resource.id ? { ...item, title: e.target.value } : item))} style={smallInputStyle} /></label><label style={labelStyle}>Description<input value={resource.description ?? ''} onChange={(e) => setResources(resources.map((item) => item.id === resource.id ? { ...item, description: e.target.value } : item))} style={smallInputStyle} /></label><label style={labelStyle}>Download URL<input type="url" value={resource.url} onChange={(e) => setResources(resources.map((item) => item.id === resource.id ? { ...item, url: e.target.value } : item))} style={smallInputStyle} /></label><label style={labelStyle}>File name<input value={resource.fileName ?? ''} onChange={(e) => setResources(resources.map((item) => item.id === resource.id ? { ...item, fileName: e.target.value } : item))} style={smallInputStyle} /></label><span style={{ display: 'flex', gap: 6 }}><button className="secondary-button" type="button" onClick={() => saveResource(resource)}>Save</button><button className="text-button" type="button" onClick={() => setEditingResourceId(null)}>Cancel</button></span></div> : <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div style={{ flex: 1 }}><strong style={{ fontSize: 13 }}>{resource.title}</strong>{resource.description && <small style={{ display: 'block', color: 'var(--muted)', marginTop: 3 }}>{resource.description}</small>}<small style={{ display: 'block', color: 'var(--muted)', marginTop: 3 }}>{resource.fileName || resource.url}</small></div><button type="button" className="icon-button" aria-label={`Move ${resource.title} up`} disabled={index === 0} onClick={() => moveResource(resource.id, -1)}><ArrowUp size={15} /></button><button type="button" className="icon-button" aria-label={`Move ${resource.title} down`} disabled={index === resources.length - 1} onClick={() => moveResource(resource.id, 1)}><ArrowDown size={15} /></button><button className="text-button" type="button" onClick={() => setEditingResourceId(resource.id)}>Edit</button><button className="text-button" type="button" onClick={() => deleteResource(resource.id)} style={{ color: '#b42318' }}>Remove</button></div>}</div>)}</div>}
+            <form className="resource-form" onSubmit={addResource} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.4fr 1fr auto', gap: 8, alignItems: 'end' }}><label style={labelStyle}>Title<input required value={resourceForm.title} onChange={(e) => setResourceForm({ ...resourceForm, title: e.target.value })} placeholder="Course worksheet" style={smallInputStyle} /></label><label style={labelStyle}>Description<input value={resourceForm.description} onChange={(e) => setResourceForm({ ...resourceForm, description: e.target.value })} placeholder="Optional short description" style={smallInputStyle} /></label><label style={labelStyle}>Download URL<input required type="url" value={resourceForm.url} onChange={(e) => setResourceForm({ ...resourceForm, url: e.target.value })} placeholder="https://..." style={smallInputStyle} /></label><label style={labelStyle}>File name<input value={resourceForm.fileName} onChange={(e) => setResourceForm({ ...resourceForm, fileName: e.target.value })} placeholder="worksheet.pdf" style={smallInputStyle} /></label><button className="secondary-button" type="submit"><Plus size={15} /> Add</button></form>
             {resourceError && <p role="alert" style={{ color: '#b42318', fontSize: 12 }}>{resourceError}</p>}
           </section>
         </>

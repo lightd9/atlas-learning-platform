@@ -33,6 +33,13 @@ enum ProgressStatus {
   COMPLETED
 }
 
+enum CourseStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
 enum MuxUploadStatus {
   CREATING
   WAITING
@@ -115,10 +122,12 @@ model Course {
   slug            String           @unique
   title           String
   description     String
+  coverImageUrl   String?
   durationMinutes Int
   durationSeconds Int              @default(0)
   muxPlaybackId   String?
   published       Boolean          @default(true)
+  status          CourseStatus     @default(DRAFT)
   sectionId       String?
   section         CourseSection?   @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   createdById     String?
@@ -157,6 +166,7 @@ model CourseModule {
   title       String
   description String?
   sortOrder   Int      @default(0)
+  archived    Boolean  @default(false)
   lessons     Lesson[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -174,6 +184,7 @@ model Lesson {
   muxPlaybackId   String?
   sortOrder       Int              @default(0)
   published       Boolean          @default(true)
+  archived        Boolean          @default(false)
   progress        LessonProgress[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt

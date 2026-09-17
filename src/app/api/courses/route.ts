@@ -10,6 +10,7 @@ export async function GET() {
     const courses = await prisma.course.findMany({
       where: {
         published: true,
+        status: 'PUBLISHED',
         OR: [
           { schoolAccess: { none: { schoolId: user.schoolId ?? undefined } } },
           { schoolAccess: { some: { schoolId: user.schoolId ?? undefined, enabled: true } } },
@@ -19,9 +20,9 @@ export async function GET() {
         progress: { where: { userId: user.id } },
         section: { select: { id: true, name: true, slug: true, description: true, sortOrder: true } },
         modules: {
-          where: { lessons: { some: { published: true } } },
+          where: { archived: false, lessons: { some: { published: true, archived: false } } },
           orderBy: { sortOrder: 'asc' },
-          include: { lessons: { where: { published: true }, orderBy: { sortOrder: 'asc' }, include: { progress: { where: { userId: user.id } } } } },
+          include: { lessons: { where: { published: true, archived: false }, orderBy: { sortOrder: 'asc' }, include: { progress: { where: { userId: user.id } } } } },
         },
       },
       orderBy: { createdAt: 'desc' },

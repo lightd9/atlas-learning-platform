@@ -9,10 +9,9 @@ const cleanNullable = (value: unknown) => (value === '' ? null : value)
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).optional(),
-  durationMinutes: z.number().int().positive().optional(),
-  durationSeconds: z.number().int().nonnegative().optional(),
-  published: z.boolean().optional(),
-  muxPlaybackId: z.preprocess(cleanNullable, z.string().nullable().optional()),
+  coverImageUrl: z.preprocess(cleanNullable, z.string().url().nullable().optional()),
+  status: z.enum(['DRAFT', 'REVIEW', 'PUBLISHED', 'ARCHIVED']).optional(),
+  published: z.boolean().optional(), // Legacy compatibility for existing callers.
   sectionId: z.preprocess(cleanNullable, z.string().nullable().optional()),
   notes: z.preprocess(cleanNullable, z.string().max(10000).nullable().optional()),
 })
@@ -55,7 +54,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const editor = await requireOwnedCourseEditor(id)
     const body = updateSchema.safeParse(await request.json())
     if (!body.success) return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
-    const data = editor.role === 'INSTRUCTOR' ? { ...body.data, published: false } : body.data
+    const requestedStatus = body.data.status ?? (body.data.published === undefined ? undefined : body.data.published ? 'PUBLISHED' : 'DRAFT')
+    const status = editor.role === 'INSTRUCTOR'
+      ? requestedStatus === 'REVIEW' ? 'REVIEW' : 'DRAFT'
+      : requestedStatus
+    const { published: _legacyPublished, ...updateData } = body.data
+    const data = { ...updateData, ...(status ? { status, published: status === 'PUBLISHED' } : {}) }
     const course = await prisma.course.update({ where: { id }, data })
     return NextResponse.json({ course })
   } catch (error) {
@@ -69,7 +73,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     await requireOwnedCourseEditor(id)
     const hasProgress = await prisma.courseProgress.count({ where: { courseId: id } })
     if (hasProgress > 0) {
-      await prisma.course.update({ where: { id }, data: { published: false } })
+      await prisma.course.update({ where: { id }, data: { published: false, status: 'ARCHIVED' } })
       return NextResponse.json({ message: 'Course archived (has existing progress)' })
     }
     await prisma.course.delete({ where: { id } })

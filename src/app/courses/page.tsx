@@ -22,6 +22,7 @@ function mapCourse(c: ApiCourse, index: number) {
     tone: tones[index % tones.length],
     progress: p ? Math.round(Number(p.percentComplete)) : 0,
     description: c.description,
+    coverImageUrl: c.coverImageUrl,
     section: c.section,
   }
 }

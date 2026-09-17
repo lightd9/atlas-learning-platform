@@ -14,6 +14,7 @@ interface CourseCardProps {
     progress?: number
     description?: string
     thumbnailUrl?: string
+    coverImageUrl?: string | null
   }
   index?: number
   onClick: () => void
@@ -23,7 +24,7 @@ export default function CourseCard({ course, index = 0, onClick }: CourseCardPro
   const tone = course.tone || ['blue', 'mint', 'lilac', 'peach', 'violet'][index % 5]
   const progress = course.progress ?? 0
   const [thumbnailFailed, setThumbnailFailed] = useState(false)
-  const thumbnailUrl = course.thumbnailUrl ?? `/api/mux/thumbnail/course/${course.id}`
+  const thumbnailUrl = course.thumbnailUrl ?? course.coverImageUrl ?? `/api/mux/thumbnail/course/${course.id}`
 
   return (
     <button className="course-card" onClick={onClick}>

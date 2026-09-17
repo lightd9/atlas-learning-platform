@@ -24,15 +24,40 @@ const moduleSchema = z.object({
 
 const contentSchema = z.object({ modules: z.array(moduleSchema) })
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     await requireOwnedCourseEditor(id)
-    const course = await prisma.course.findUnique({ where: { id }, include: { modules: { include: { lessons: { orderBy: { sortOrder: 'asc' } } }, orderBy: { sortOrder: 'asc' } } } })
+    const includeArchived = new URL(request.url).searchParams.get('includeArchived') === 'true'
+    const course = await prisma.course.findUnique({ where: { id }, include: { modules: { where: includeArchived ? undefined : { archived: false }, include: { lessons: { where: includeArchived ? undefined : { archived: false }, orderBy: { sortOrder: 'asc' } } }, orderBy: { sortOrder: 'asc' } } } })
     if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
     return NextResponse.json({ modules: course.modules })
   } catch (error) {
     return apiErrorResponse(error, 'Unable to load course content')
+  }
+}
+
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id: courseId } = await params
+    await requireOwnedCourseEditor(courseId)
+    const body = z.object({ moduleId: z.string().optional(), lessonId: z.string().optional() }).refine((value) => value.moduleId || value.lessonId).safeParse(await request.json())
+    if (!body.success) return NextResponse.json({ error: 'Provide a module or lesson to restore.' }, { status: 400 })
+    if (body.data.lessonId) {
+      const lesson = await prisma.lesson.findFirst({ where: { id: body.data.lessonId, module: { courseId } } })
+      if (!lesson) return NextResponse.json({ error: 'Lesson not found.' }, { status: 404 })
+      await prisma.lesson.update({ where: { id: lesson.id }, data: { archived: false, published: true } })
+    } else {
+      const module = await prisma.courseModule.findFirst({ where: { id: body.data.moduleId, courseId } })
+      if (!module) return NextResponse.json({ error: 'Module not found.' }, { status: 404 })
+      await prisma.$transaction([
+        prisma.courseModule.update({ where: { id: module.id }, data: { archived: false } }),
+        prisma.lesson.updateMany({ where: { moduleId: module.id }, data: { archived: false, published: true } }),
+      ])
+    }
+    return NextResponse.json({ restored: true })
+  } catch (error) {
+    return apiErrorResponse(error, 'Unable to restore course content')
   }
 }
 
@@ -59,20 +84,22 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const incomingModuleIds = body.data.modules.flatMap((module) => module.id ? [module.id] : [])
     const incomingLessonIds = body.data.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.id ? [lesson.id] : []))
     await prisma.$transaction(async (tx) => {
-      await tx.lesson.deleteMany({ where: { moduleId: { in: existing.modules.map((module) => module.id) }, id: { notIn: incomingLessonIds } } })
-      await tx.courseModule.deleteMany({ where: { courseId, id: { notIn: incomingModuleIds } } })
+      await tx.lesson.updateMany({ where: { moduleId: { in: existing.modules.map((module) => module.id) }, id: { notIn: incomingLessonIds } }, data: { archived: true, published: false } })
+      await tx.courseModule.updateMany({ where: { courseId, id: { notIn: incomingModuleIds } }, data: { archived: true } })
       for (const module of body.data.modules) {
         const savedModule = module.id
-          ? await tx.courseModule.update({ where: { id: module.id, courseId }, data: { title: module.title, description: module.description || null, sortOrder: module.sortOrder } })
-          : await tx.courseModule.create({ data: { courseId, title: module.title, description: module.description || null, sortOrder: module.sortOrder } })
+          ? await tx.courseModule.update({ where: { id: module.id, courseId }, data: { title: module.title, description: module.description || null, sortOrder: module.sortOrder, archived: false } })
+          : await tx.courseModule.create({ data: { courseId, title: module.title, description: module.description || null, sortOrder: module.sortOrder, archived: false } })
         for (const lesson of module.lessons) {
-          const data = { title: lesson.title, description: lesson.description || null, durationSeconds: lesson.durationSeconds, muxPlaybackId: lesson.muxPlaybackId || null, sortOrder: lesson.sortOrder, published: lesson.published }
+          const data = { title: lesson.title, description: lesson.description || null, durationSeconds: lesson.durationSeconds, muxPlaybackId: lesson.muxPlaybackId || null, sortOrder: lesson.sortOrder, published: lesson.published, archived: false }
           if (lesson.id) await tx.lesson.update({ where: { id: lesson.id, moduleId: savedModule.id }, data })
           else await tx.lesson.create({ data: { ...data, moduleId: savedModule.id } })
         }
       }
+      const durationSeconds = body.data.modules.reduce((courseTotal, module) => courseTotal + module.lessons.reduce((moduleTotal, lesson) => moduleTotal + lesson.durationSeconds, 0), 0)
+      await tx.course.update({ where: { id: courseId }, data: { durationSeconds, durationMinutes: Math.ceil(durationSeconds / 60) } })
     })
-    const modules = await prisma.courseModule.findMany({ where: { courseId }, include: { lessons: { orderBy: { sortOrder: 'asc' } } }, orderBy: { sortOrder: 'asc' } })
+    const modules = await prisma.courseModule.findMany({ where: { courseId, archived: false }, include: { lessons: { where: { archived: false }, orderBy: { sortOrder: 'asc' } } }, orderBy: { sortOrder: 'asc' } })
     return NextResponse.json({ modules })
   } catch (error) {
     return apiErrorResponse(error, 'Unable to save course content')

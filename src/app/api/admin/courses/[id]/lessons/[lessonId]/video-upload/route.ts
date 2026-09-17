@@ -69,6 +69,9 @@ export async function GET(_request: Request, { params }: RouteContext) {
                   prisma.muxUpload.update({ where: { id: record.id }, data: { muxAssetId: assetId, playbackId, duration: assetData.duration ?? null, status: 'READY', errorCode: null, errorMessage: null } }),
                   prisma.lesson.update({ where: { id: lessonId }, data: { muxPlaybackId: playbackId, ...(assetData.duration ? { durationSeconds: Math.round(assetData.duration) } : {}) } }),
                 ])
+                const duration = await prisma.lesson.aggregate({ where: { module: { courseId } }, _sum: { durationSeconds: true } })
+                const durationSeconds = duration._sum.durationSeconds ?? 0
+                await prisma.course.update({ where: { id: courseId }, data: { durationSeconds, durationMinutes: Math.ceil(durationSeconds / 60) } })
                 record.status = 'READY'
                 record.playbackId = playbackId
                 record.duration = assetData.duration ?? null

@@ -3,9 +3,11 @@ export interface ApiCourse {
   slug: string
   title: string
   description: string
+  coverImageUrl?: string | null
   durationMinutes: number
   durationSeconds?: number
   published: boolean
+  status?: 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'ARCHIVED'
   muxPlaybackId?: string | null
   section?: ApiCourseSection | null
   modules?: ApiCourseModule[]
@@ -35,6 +37,7 @@ export interface ApiCourseModule {
   title: string
   description?: string | null
   sortOrder: number
+  archived?: boolean
   lessons: ApiLesson[]
 }
 
@@ -46,6 +49,8 @@ export interface ApiLesson {
   muxPlaybackId?: string | null
   sortOrder: number
   published: boolean
+  archived?: boolean
+  status?: 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'ARCHIVED'
   progress?: {
     id: string
     status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
@@ -73,6 +78,7 @@ export interface CourseCardCourse {
   tone: string
   progress: number
   description: string
+  coverImageUrl?: string | null
 }
 
 export interface ApiTeacher {
@@ -128,6 +134,7 @@ export interface AdminCourse {
   durationMinutes: number
   durationSeconds?: number
   published: boolean
+  status?: 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'ARCHIVED'
   muxPlaybackId: string | null
   sectionId: string | null
   section: ApiCourseSection | null
