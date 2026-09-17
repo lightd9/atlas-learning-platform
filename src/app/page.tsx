@@ -248,19 +248,21 @@ export default function HomePage() {
       .then((response) => response.ok ? response.json() : null)
       .then((content) => {
         const placements = content?.TOP_COURSES ?? [];
-        const toImage = (course: any, index: number) => course.coverImageUrl || featuredCourses[index % featuredCourses.length].image;
+        // Keep each placement tied to its own course thumbnail. Never borrow an
+        // image from another homepage section when a course has no thumbnail.
+        const toImage = (course: any) => course.coverImageUrl || '/course-icon.png';
         if (placements.length) setManagedFeaturedCourses(placements.map((course: any, index: number) => ({
           title: course.title,
           category: course.section?.name ?? 'Artificial Intelligence',
           duration: `${course.durationMinutes ?? 0} min`,
           lessons: 0,
           status: 'available' as const,
-          image: toImage(course, index),
+          image: toImage(course),
         })));
         const recommended = content?.RECOMMENDED ?? [];
-        if (recommended.length) setManagedRecommendations(recommended.map((course: any, index: number) => [course.title, course.section?.name ?? 'Recommended learning', toImage(course, index)] as const));
+        if (recommended.length) setManagedRecommendations(recommended.map((course: any) => [course.title, course.section?.name ?? 'Recommended learning', toImage(course)] as const));
         const unlock = content?.UNLOCK_SOMETHING_NEW ?? [];
-        if (unlock.length) setManagedSkills(unlock.map((course: any, index: number) => [course.title, course.section?.name ?? 'New skill', toImage(course, index)] as const));
+        if (unlock.length) setManagedSkills(unlock.map((course: any) => [course.title, course.section?.name ?? 'New skill', toImage(course)] as const));
       })
       .catch(() => {});
   }, []);
