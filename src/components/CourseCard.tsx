@@ -18,9 +18,10 @@ interface CourseCardProps {
   }
   index?: number
   onClick: () => void
+  showProgress?: boolean
 }
 
-export default function CourseCard({ course, index = 0, onClick }: CourseCardProps) {
+export default function CourseCard({ course, index = 0, onClick, showProgress = true }: CourseCardProps) {
   const tone = course.tone || ['blue', 'mint', 'lilac', 'peach', 'violet'][index % 5]
   const progress = course.progress ?? 0
   const [thumbnailFailed, setThumbnailFailed] = useState(false)
@@ -43,10 +44,10 @@ export default function CourseCard({ course, index = 0, onClick }: CourseCardPro
         </div>
         <h3>{course.title}</h3>
         {course.description && <p>{course.description}</p>}
-        <div className="card-progress">
+        {showProgress && <div className="card-progress">
           <div><span>Your progress</span><strong>{progress}%</strong></div>
           <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
-        </div>
+        </div>}
       </div>
     </button>
   )

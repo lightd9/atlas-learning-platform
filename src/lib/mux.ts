@@ -112,11 +112,11 @@ export async function generateThumbnailUrl(playbackId: string): Promise<string |
   // Course cards use a landscape frame. Ask Mux for a 16:9 thumbnail so the
   // source frame is composed for the card rather than returning a portrait
   // crop from a landscape video.
-  const token = await new SignJWT({ time: 1, width: 640, aspect_ratio: '16:9', fit_mode: 'crop' })
+  const token = await new SignJWT({ time: 1, width: 640, height: 360, fit_mode: 'crop' })
     .setProtectedHeader({ alg: 'RS256', kid: MUX_SIGNING_KEY_ID, typ: 'JWT' })
     .setSubject(playbackId)
     .setAudience('t')
     .setExpirationTime('2h')
     .sign(getSigningPrivateKey())
-  return `https://image.mux.com/${playbackId}/thumbnail.webp?token=${token}`
+  return `https://image.mux.com/${playbackId}/thumbnail.jpg?token=${token}`
 }
