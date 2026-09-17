@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { FileUp } from 'lucide-react'
@@ -47,7 +47,7 @@ function buildChartPath(series: { minutes: number }[]) {
   return { line: path, area, coords }
 }
 
-export default function AnalyticsPage() {
+function AnalyticsPageContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const selectedSchoolId = searchParams.get('schoolId')
@@ -210,4 +210,8 @@ export default function AnalyticsPage() {
       }
     </div>
   </AuthShell>
+}
+
+export default function AnalyticsPage() {
+  return <Suspense fallback={<AuthShell active="School analytics"><div className="page-wrap"><p>Loading analytics...</p></div></AuthShell>}><AnalyticsPageContent /></Suspense>
 }
