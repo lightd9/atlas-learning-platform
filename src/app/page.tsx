@@ -233,8 +233,7 @@ function BenefitIcon({ Icon }: { Icon: (typeof benefits)[number][0] }) {
 
 export default function HomePage() {
   const [active, setActive] = useState(0);
-  const [activeCategory, setActiveCategory] =
-    useState<(typeof courseCategories)[number]>("All courses");
+  const [activeCategory, setActiveCategory] = useState("All courses");
   const slide = slides[active];
   const trackRef = useRef<HTMLDivElement>(null);
   const marqueeRef = useRef<HTMLDivElement>(null);
@@ -242,38 +241,39 @@ export default function HomePage() {
   const [canScroll, setCanScroll] = useState({ left: false, right: false });
   const [recommendationScroll, setRecommendationScroll] = useState({ left: false, right: false });
   const [managedFeaturedCourses, setManagedFeaturedCourses] = useState(featuredCourses);
-  const [managedRecommendations, setManagedRecommendations] = useState(recommendations);
-  const [managedSkills, setManagedSkills] = useState(newSkills);
+  const [managedRecommendations, setManagedRecommendations] = useState<Array<[string, string, string]>>(recommendations.map(([title, category, image]) => [title, category, image]));
+  const [managedSkills, setManagedSkills] = useState<Array<[string, string, string]>>(newSkills.map(([title, category, image]) => [title, category, image]));
+  const [homeContentReady, setHomeContentReady] = useState(false);
 
   useEffect(() => {
     fetch('/api/public/home-content', { cache: 'no-store' })
       .then((response) => response.ok ? response.json() : null)
       .then((content) => {
-        const placements = content?.TOP_COURSES ?? [];
-        // Keep each placement tied to its own course thumbnail. Never borrow an
-        // image from another homepage section when a course has no thumbnail.
-        const legacyImage = [...featuredCourses.map((item) => [item.title, item.image] as const), ...recommendations.map(([title, , image]) => [title, image] as const), ...newSkills.map(([title, , image]) => [title, image] as const)];
-        const toImage = (course: any) => course.coverImageUrl || legacyImage.find(([title]) => title === course.title)?.[1] || '';
-        if (placements.length) setManagedFeaturedCourses(placements.map((course: any, index: number) => ({
+        const toImage = (course: any) => course.coverImageUrl || '';
+        const extraCourses = (items: any[], existingTitles: string[]) => items.filter((course) => !existingTitles.includes(course.title)).map((course) => course);
+        const topExtras = extraCourses(content?.TOP_COURSES ?? [], featuredCourses.map((course) => course.title));
+        if (topExtras.length) setManagedFeaturedCourses([...featuredCourses, ...topExtras.map((course: any) => ({
           title: course.title,
           category: course.section?.name ?? 'Artificial Intelligence',
           duration: `${course.durationMinutes ?? 0} min`,
           lessons: 0,
           status: 'available' as const,
           image: toImage(course),
-        })));
-        const recommended = content?.RECOMMENDED ?? [];
-        if (recommended.length) setManagedRecommendations(recommended.map((course: any) => [course.title, course.section?.name ?? 'Recommended learning', toImage(course)] as const));
-        const unlock = content?.UNLOCK_SOMETHING_NEW ?? [];
-        if (unlock.length) setManagedSkills(unlock.map((course: any) => [course.title, course.section?.name ?? 'New skill', toImage(course)] as const));
+        }))]);
+        const recommended = extraCourses(content?.RECOMMENDED ?? [], recommendations.map(([title]) => title));
+        if (recommended.length) setManagedRecommendations([...recommendations.map(([title, category, image]) => [title, category, image] as [string, string, string]), ...recommended.map((course: any) => [course.title, course.section?.name ?? 'Recommended learning', toImage(course)] as [string, string, string])]);
+        const unlock = extraCourses(content?.UNLOCK_SOMETHING_NEW ?? [], newSkills.map(([title]) => title));
+        if (unlock.length) setManagedSkills([...newSkills.map(([title, category, image]) => [title, category, image] as [string, string, string]), ...unlock.map((course: any) => [course.title, course.section?.name ?? 'New skill', toImage(course)] as [string, string, string])]);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setHomeContentReady(true));
   }, []);
 
   const categoryCourses =
     activeCategory === "All courses"
       ? managedFeaturedCourses
       : managedFeaturedCourses.filter((course) => course.category === activeCategory);
+  const homeCategories = ["All courses", ...Array.from(new Set(managedFeaturedCourses.map((course) => course.category)))];
 
   const updateScrollState = useCallback(() => {
     const marquee = marqueeRef.current;
@@ -358,7 +358,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="atlas-public-home">
+    <div className={`atlas-public-home ${homeContentReady ? "atlas-content-ready" : "atlas-content-loading"}`}>
       <PublicNavbar />
 
       <main>
@@ -496,7 +496,7 @@ export default function HomePage() {
             role="tablist"
             aria-label="Filter courses by category"
           >
-            {courseCategories.map((category) => (
+            {homeCategories.map((category) => (
               <button
                 key={category}
                 type="button"

@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 const sectionSchema = z.enum(['RECOMMENDED', 'TOP_COURSES', 'UNLOCK_SOMETHING_NEW', 'EXPLORE'])
 const placementSchema = z.object({ courseId: z.string().min(1), section: sectionSchema, sortOrder: z.number().int().nonnegative().optional(), active: z.boolean().optional() })
 const reorderSchema = z.object({ ids: z.array(z.string()).min(1) })
+const sectionLimits: Record<string, number | null> = { RECOMMENDED: 5, TOP_COURSES: null, UNLOCK_SOMETHING_NEW: 3, EXPLORE: null }
 
 export async function GET() {
   try {
@@ -21,6 +22,12 @@ export async function POST(request: Request) {
     const parsed = placementSchema.safeParse(await request.json())
     if (!parsed.success) return NextResponse.json({ error: 'Select a valid course and homepage section.' }, { status: 400 })
     const { courseId, section, sortOrder = 0, active = true } = parsed.data
+    const limit = sectionLimits[section]
+    if (limit !== null) {
+      const count = await prisma.homePagePlacement.count({ where: { section, active: true } })
+      const alreadyPlaced = await prisma.homePagePlacement.findUnique({ where: { courseId_section: { courseId, section } }, select: { id: true } })
+      if (!alreadyPlaced && count >= limit) return NextResponse.json({ error: `${section === 'RECOMMENDED' ? 'Recommended for you' : 'Unlock something new'} can contain a maximum of ${limit} courses.` }, { status: 400 })
+    }
     const course = await prisma.course.findFirst({ where: { id: courseId, published: true, status: 'PUBLISHED' }, select: { id: true } })
     if (!course) return NextResponse.json({ error: 'Only published courses can be placed on the public site.' }, { status: 400 })
     const placement = await prisma.homePagePlacement.upsert({ where: { courseId_section: { courseId, section } }, update: { sortOrder, active }, create: { courseId, section, sortOrder, active } })

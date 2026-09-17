@@ -22,7 +22,7 @@ export default function PublicNavbar() {
   useEffect(() => {
     fetch('/api/public/home-content', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((content) => {
       const explore = content?.EXPLORE ?? [];
-      if (explore.length) setSearchCourses(explore.map((course: any) => ({ title: course.title, category: course.section?.name ?? 'Course', duration: `${course.durationMinutes ?? 0} min`, lessons: 0, status: 'available' as const, image: course.coverImageUrl || '' })));
+      if (explore.length) setSearchCourses([...publicCourses, ...explore.filter((course: any) => !publicCourses.some((fallback) => fallback.title === course.title)).map((course: any) => ({ title: course.title, category: course.section?.name ?? 'Course', duration: `${course.durationMinutes ?? 0} min`, lessons: 0, status: 'available' as const, image: course.coverImageUrl || '' }))]);
     }).catch(() => {});
   }, []);
 

@@ -22,7 +22,9 @@ export default async function ExplorePage({
   const { q = "" } = await searchParams;
   const query = q.toLowerCase().trim();
   const placements = await prisma.homePagePlacement.findMany({ where: { section: "EXPLORE", active: true, course: { published: true, status: "PUBLISHED" } }, orderBy: { sortOrder: "asc" }, include: { course: { select: { title: true, description: true, coverImageUrl: true, durationMinutes: true, section: { select: { name: true } } } } } });
-  const publicCourses = placements.length ? placements.map((placement) => ({ title: placement.course.title, category: placement.course.section?.name ?? "Artificial Intelligence", duration: `${placement.course.durationMinutes} min`, lessons: 0, status: "available" as const, image: placement.course.coverImageUrl || "" })) : fallbackPublicCourses;
+  const managedCourses = placements.map((placement) => ({ title: placement.course.title, category: placement.course.section?.name ?? "Artificial Intelligence", duration: `${placement.course.durationMinutes} min`, lessons: 0, status: "available" as const, image: placement.course.coverImageUrl || "" }));
+  const publicCourses = [...fallbackPublicCourses, ...managedCourses.filter((course) => !fallbackPublicCourses.some((fallback) => fallback.title === course.title))];
+  const exploreCategories = Array.from(new Set(publicCourses.map((course) => course.category)));
   const filtered = query
     ? publicCourses.filter((course) =>
         (course.title + " " + course.category).toLowerCase().includes(query),
@@ -46,7 +48,7 @@ export default async function ExplorePage({
               : "Browse practical courses by topic and find the next step for your professional development."}
           </p>
           <nav aria-label="Course categories">
-            {publicCourseCategories.map((category) => (
+            {exploreCategories.map((category) => (
               <Link key={category} href={`#${categoryId(category)}`}>{category}</Link>
             ))}
           </nav>
@@ -66,7 +68,7 @@ export default async function ExplorePage({
           </div>
         ) : (
           <div className="atlas-explore-catalogue">
-          {publicCourseCategories.map((category) => {
+          {exploreCategories.map((category) => {
             const courses = filtered.filter((course) => course.category === category);
             if (courses.length === 0 && query) return null;
             return (
