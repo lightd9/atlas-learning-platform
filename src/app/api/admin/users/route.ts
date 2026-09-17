@@ -28,6 +28,7 @@ export async function GET() {
       schoolName: u.school?.name ?? null,
       lastActiveAt: u.lastActiveAt?.toISOString() ?? null,
       createdAt: u.createdAt.toISOString(),
+      permissions: Array.isArray(u.permissions) ? u.permissions : [],
     }))
     return NextResponse.json({ users: data })
   } catch (error) {

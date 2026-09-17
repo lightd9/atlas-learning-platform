@@ -70,6 +70,7 @@ model User {
   name            String
   passwordHash    String?
   role            UserRole
+  permissions     Json             @default("[]")
   status          UserStatus       @default(INVITED)
   lastActiveAt    DateTime?
   invitationsSent Invitation[]     @relation("InvitedBy")

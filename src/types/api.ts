@@ -157,6 +157,7 @@ export interface AdminUser {
   schoolName: string | null
   lastActiveAt: string | null
   createdAt: string
+  permissions?: string[]
 }
 
 export interface AdminAnalytics {

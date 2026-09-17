@@ -35,11 +35,17 @@ export async function requireCourseEditor() {
   return user
 }
 
+export const INSTRUCTOR_PERMISSIONS = ['COURSE_CREATE', 'COURSE_EDIT_OWN', 'COURSE_EDIT_ALL', 'COURSE_PUBLISH', 'COURSE_DELETE', 'SCHOOL_ASSIGN', 'ANALYTICS_VIEW'] as const
+export type InstructorPermission = typeof INSTRUCTOR_PERMISSIONS[number]
+export function hasPermission(user: { role: string; permissions?: unknown }, permission: InstructorPermission) {
+  return user.role === 'ATLAS_ADMIN' || (user.role === 'INSTRUCTOR' && Array.isArray(user.permissions) && user.permissions.includes(permission))
+}
+
 export async function requireOwnedCourseEditor(courseId: string) {
   const user = await requireCourseEditor()
   const course = await prisma.course.findUnique({ where: { id: courseId }, select: { createdById: true } })
   if (!course) throw new Error('COURSE_NOT_FOUND')
-  if (user.role === 'INSTRUCTOR' && course.createdById !== user.id) throw new Error('FORBIDDEN')
+  if (user.role === 'INSTRUCTOR' && course.createdById !== user.id && !hasPermission(user, 'COURSE_EDIT_ALL')) throw new Error('FORBIDDEN')
   return user
 }
 
