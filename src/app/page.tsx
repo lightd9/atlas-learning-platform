@@ -259,12 +259,36 @@ export default function HomePage() {
           image: toImage(course),
         });
         const toTuple = (course: any, fallbackCategory: string): [string, string, string] => [course.title, course.section?.name ?? fallbackCategory, toImage(course)];
+
         const topCourses = content?.TOP_COURSES ?? [];
-        if (topCourses.length) setManagedFeaturedCourses(topCourses.map(toCard));
+        if (topCourses.length) {
+          const staticByTitle = new Map(featuredCourses.map((course) => [course.title, course] as const));
+          setManagedFeaturedCourses(topCourses.map((course: any) => staticByTitle.get(course.title) ?? toCard(course)));
+        } else {
+          setManagedFeaturedCourses(featuredCourses);
+        }
+
         const recommended = content?.RECOMMENDED ?? [];
-        if (recommended.length) setManagedRecommendations(recommended.map((course: any) => toTuple(course, 'Recommended learning')));
+        if (recommended.length) {
+          const staticByTitle = new Map(recommendations.map(([title, category, image]) => [title, [category, image]] as const));
+          setManagedRecommendations(recommended.map((course: any) => {
+            const staticItem = staticByTitle.get(course.title);
+            return staticItem ? [course.title, staticItem[0], staticItem[1]] as [string, string, string] : toTuple(course, 'Recommended learning');
+          }));
+        } else {
+          setManagedRecommendations(recommendations.map(([title, category, image]) => [title, category, image] as [string, string, string]));
+        }
+
         const unlock = content?.UNLOCK_SOMETHING_NEW ?? [];
-        if (unlock.length) setManagedSkills(unlock.map((course: any) => toTuple(course, 'New skill')));
+        if (unlock.length) {
+          const staticByTitle = new Map(newSkills.map(([title, category, image]) => [title, [category, image]] as const));
+          setManagedSkills(unlock.map((course: any) => {
+            const staticItem = staticByTitle.get(course.title);
+            return staticItem ? [course.title, staticItem[0], staticItem[1]] as [string, string, string] : toTuple(course, 'New skill');
+          }));
+        } else {
+          setManagedSkills(newSkills.map(([title, category, image]) => [title, category, image] as [string, string, string]));
+        }
       })
       .catch(() => {})
       .finally(() => setHomeContentReady(true));
