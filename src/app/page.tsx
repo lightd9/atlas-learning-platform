@@ -250,21 +250,21 @@ export default function HomePage() {
       .then((response) => response.ok ? response.json() : null)
       .then((content) => {
         const toImage = (course: any) => course.coverImageUrl || `/api/public/course-thumbnail/${course.id}`;
-        const extraCourses = (items: any[], existingTitles: string[]) => items.filter((course) => !existingTitles.includes(course.title)).map((course) => course);
-        const topExtras = extraCourses(content?.TOP_COURSES ?? [], featuredCourses.map((course) => course.title));
-        if (topExtras.length) setManagedFeaturedCourses([...featuredCourses, ...topExtras.map((course: any) => ({
+        const toCard = (course: any) => ({
           title: course.title,
           category: course.section?.name ?? 'Artificial Intelligence',
           duration: `${course.durationMinutes ?? 0} min`,
           lessons: 0,
           status: 'available' as const,
           image: toImage(course),
-        }))]);
-        const recommended = extraCourses(content?.RECOMMENDED ?? [], recommendations.map(([title]) => title));
-        if (recommended.length) setManagedRecommendations([...recommendations.map(([title, category, image]) => [title, category, image] as [string, string, string]), ...recommended.map((course: any) => [course.title, course.section?.name ?? 'Recommended learning', toImage(course)] as [string, string, string])]);
-        const allLegacyTitles = [...featuredCourses.map((course) => course.title), ...recommendations.map(([title]) => title), ...newSkills.map(([title]) => title)];
-        const unlock = extraCourses(content?.UNLOCK_SOMETHING_NEW ?? [], allLegacyTitles);
-        if (unlock.length) setManagedSkills([...newSkills.map(([title, category, image]) => [title, category, image] as [string, string, string]), ...unlock.map((course: any) => [course.title, course.section?.name ?? 'New skill', toImage(course)] as [string, string, string])]);
+        });
+        const toTuple = (course: any, fallbackCategory: string): [string, string, string] => [course.title, course.section?.name ?? fallbackCategory, toImage(course)];
+        const topCourses = content?.TOP_COURSES ?? [];
+        if (topCourses.length) setManagedFeaturedCourses(topCourses.map(toCard));
+        const recommended = content?.RECOMMENDED ?? [];
+        if (recommended.length) setManagedRecommendations(recommended.map((course: any) => toTuple(course, 'Recommended learning')));
+        const unlock = content?.UNLOCK_SOMETHING_NEW ?? [];
+        if (unlock.length) setManagedSkills(unlock.map((course: any) => toTuple(course, 'New skill')));
       })
       .catch(() => {})
       .finally(() => setHomeContentReady(true));
