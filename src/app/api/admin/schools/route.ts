@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAtlasAdmin } from '@/lib/access'
+import { requireAtlasAdmin, requirePermission } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { createInvitationToken, invitationExpiry } from '@/lib/invitations'
 import { headteacherSetupEmail, sendEmail } from '@/lib/email'
@@ -7,7 +7,7 @@ import { auditLog } from '@/lib/audit'
 
 export async function GET() {
   try {
-    await requireAtlasAdmin()
+    await requirePermission('SCHOOL_CREATE')
     const [schools, totalPublishedCourses] = await Promise.all([prisma.school.findMany({
       include: {
         _count: { select: { users: true } },

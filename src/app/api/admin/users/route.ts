@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAtlasAdmin, requireUserPasswordResetAccess } from '@/lib/access'
+import { requireAtlasAdmin, requireUserPasswordResetAccess, requireUsersViewer } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { createInvitationToken, invitationExpiry, INVITATION_RESEND_COOLDOWN_MS } from '@/lib/invitations'
@@ -15,7 +15,7 @@ const createSchema = z.object({
 
 export async function GET() {
   try {
-    await requireUserPasswordResetAccess()
+    await requireUsersViewer()
     const users = await prisma.user.findMany({
       include: { school: { select: { name: true } } },
       orderBy: { createdAt: 'desc' },

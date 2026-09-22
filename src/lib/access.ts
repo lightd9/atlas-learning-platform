@@ -48,7 +48,7 @@ export async function requireCourseEditor() {
   return user
 }
 
-export const INSTRUCTOR_PERMISSIONS = ['COURSE_CREATE', 'COURSE_EDIT_OWN', 'COURSE_EDIT_ALL', 'COURSE_PUBLISH', 'COURSE_DELETE', 'SCHOOL_ASSIGN', 'ANALYTICS_VIEW', 'HOME_CONTENT_MANAGE'] as const
+export const INSTRUCTOR_PERMISSIONS = ['COURSE_CREATE', 'COURSE_EDIT_OWN', 'COURSE_EDIT_ALL', 'COURSE_PUBLISH', 'COURSE_DELETE', 'SCHOOL_ASSIGN', 'ANALYTICS_VIEW', 'HOME_CONTENT_MANAGE', 'SCHOOL_CREATE', 'USER_CREATE', 'USER_RESET_PASSWORD', 'USER_DELETE', 'AUDIT_VIEW'] as const
 export type InstructorPermission = typeof INSTRUCTOR_PERMISSIONS[number]
 export function hasPermission(user: { role: string; permissions?: unknown }, permission: InstructorPermission) {
   if (user.role === 'ATLAS_ADMIN') return true
@@ -59,6 +59,18 @@ export function hasPermission(user: { role: string; permissions?: unknown }, per
 export async function requireHomeContentManager() {
   const user = await requireSchoolUser()
   if (!hasPermission(user, 'HOME_CONTENT_MANAGE')) throw new Error('FORBIDDEN')
+  return user
+}
+
+export async function requirePermission(permission: InstructorPermission) {
+  const user = await requireSchoolUser()
+  if (!hasPermission(user, permission)) throw new Error('FORBIDDEN')
+  return user
+}
+
+export async function requireUsersViewer() {
+  const user = await requireSchoolUser()
+  if (!hasPermission(user, 'USER_CREATE') && !hasPermission(user, 'USER_RESET_PASSWORD')) throw new Error('FORBIDDEN')
   return user
 }
 

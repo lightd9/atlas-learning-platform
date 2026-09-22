@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { requireAtlasAdmin } from '@/lib/access'
+import { requirePermission } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: Request) {
   try {
-    await requireAtlasAdmin()
+    await requirePermission('AUDIT_VIEW')
     const searchParams = new URL(request.url).searchParams
     const schoolId = searchParams.get('schoolId') || undefined
     const search = searchParams.get('search')?.trim() || undefined

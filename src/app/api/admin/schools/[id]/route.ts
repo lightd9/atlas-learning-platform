@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAtlasAdmin } from '@/lib/access'
+import { requireAtlasAdmin, requirePermission } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -12,7 +12,7 @@ const updateSchema = z.object({
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAtlasAdmin()
+    await requirePermission('SCHOOL_CREATE')
     const { id } = await params
     const [school, totalPublishedCourses] = await Promise.all([prisma.school.findUnique({
       where: { id },

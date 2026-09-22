@@ -61,7 +61,7 @@ export default function AdminSchoolDetailPage({ params }: { params: Promise<{ sc
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
-    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN') { router.push('/dashboard'); return }
+    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN' && !(session?.user?.role === 'ATLAS_EMPLOYEE' && Array.isArray(session.user.permissions) && (session.user.permissions as string[]).includes('SCHOOL_CREATE'))) { router.push('/dashboard'); return }
     if (status === 'authenticated') load().catch(() => setLoading(false))
   }, [status, session, router, schoolId])
 
