@@ -43,7 +43,11 @@ export default function LoginForm() {
         : session?.user?.role === 'INSTRUCTOR'
           ? '/admin/courses'
           : callbackUrl
-      router.replace(destination)
+      if (session?.user?.mustChangePassword) {
+        router.replace(`/change-password?callbackUrl=${encodeURIComponent(destination)}`)
+      } else {
+        router.replace(destination)
+      }
       router.refresh()
     }
   }

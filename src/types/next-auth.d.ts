@@ -6,6 +6,7 @@ declare module 'next-auth' {
     role?: string
     schoolId?: string | null
     permissions?: unknown
+    mustChangePassword?: boolean
   }
   interface Session {
     user: User & { id: string; role?: string; schoolId?: string | null }
@@ -17,5 +18,6 @@ declare module 'next-auth/jwt' {
     role?: string
     schoolId?: string | null
     permissions?: unknown
+    mustChangePassword?: boolean
   }
 }

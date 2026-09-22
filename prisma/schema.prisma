@@ -81,6 +81,7 @@ model User {
   permissions     Json             @default("[]")
   status          UserStatus       @default(INVITED)
   lastActiveAt    DateTime?
+  mustChangePassword Boolean       @default(false)
   invitationsSent Invitation[]     @relation("InvitedBy")
   invitation      Invitation?      @relation("AcceptedInvitation")
   progress        CourseProgress[]
