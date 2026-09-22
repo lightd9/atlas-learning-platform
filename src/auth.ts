@@ -1,17 +1,29 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import { encode as defaultJwtEncode, decode as defaultJwtDecode } from 'next-auth/jwt'
 import { compare } from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { rateLimit, resetRateLimit } from '@/lib/rate-limit'
+import { sessionMaxAge } from '@/lib/session'
 
 const credentialsSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(8),
+  remember: z.enum(['true', 'false']).optional(),
 })
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: 'jwt' },
+  jwt: {
+    async encode(params) {
+      const maxAge = sessionMaxAge((params.token as { remember?: boolean } | undefined)?.remember, params.maxAge)
+      return defaultJwtEncode({ ...params, maxAge })
+    },
+    async decode(params) {
+      return defaultJwtDecode(params)
+    },
+  },
   pages: {
     signIn: '/login',
   },
@@ -31,8 +43,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!await compare(parsed.data.password, user.passwordHash)) return null
 
       await resetRateLimit(loginKey)
+      await prisma.user.update({ where: { id: user.id }, data: { lastActiveAt: new Date() } })
 
-      return { id: user.id, email: user.email, name: user.name, role: user.role, schoolId: user.schoolId, permissions: user.permissions, mustChangePassword: user.mustChangePassword }
+      const remember = parsed.data.remember === 'true'
+
+      return { id: user.id, email: user.email, name: user.name, role: user.role, schoolId: user.schoolId, permissions: user.permissions, mustChangePassword: user.mustChangePassword, remember }
     },
   })],
   callbacks: {
@@ -44,6 +59,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.email = user.email
         token.permissions = user.permissions
         token.mustChangePassword = user.mustChangePassword
+        token.remember = (user as { remember?: boolean }).remember ?? true
       }
       if (trigger === 'update' && session?.user) {
         token.name = session.user.name ?? token.name

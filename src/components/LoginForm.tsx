@@ -18,6 +18,7 @@ export default function LoginForm() {
     : '/dashboard'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -29,6 +30,7 @@ export default function LoginForm() {
     const result = await signIn('credentials', {
       email,
       password,
+      remember,
       redirect: false,
     })
 
@@ -69,7 +71,7 @@ export default function LoginForm() {
         <label htmlFor="password">Password</label>
         <PasswordInput id="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" required />
         <div className="login-options">
-          <label><input type="checkbox" /> <span>Remember me</span></label>
+          <label><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> <span>Remember me</span></label>
           <Link className="login-forgot" href="/forgot-password">Forgot password?</Link>
         </div>
         <button className="primary-button login-submit" type="submit" disabled={loading}>
