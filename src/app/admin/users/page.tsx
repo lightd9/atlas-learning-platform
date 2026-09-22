@@ -13,6 +13,8 @@ export default function AdminUsersPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
+  const canManageUsers = session?.user?.role === 'ATLAS_ADMIN'
+  const canResetPasswords = canManageUsers || (session?.user?.role === 'ATLAS_EMPLOYEE' && Array.isArray(session?.user?.permissions) && (session.user.permissions as string[]).includes('USER_RESET_PASSWORD'))
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -26,15 +28,15 @@ export default function AdminUsersPage() {
   const [permissionDraft, setPermissionDraft] = useState<string[]>([])
   const [resetResult, setResetResult] = useState<{ name: string; password: string } | null>(null)
   const [copied, setCopied] = useState(false)
-  const permissionOptions = [{ key: 'HOME_CONTENT_MANAGE', label: 'Manage homepage content' }, { key: 'COURSE_CREATE', label: 'Create courses' }, { key: 'COURSE_EDIT_OWN', label: 'Edit own courses' }, { key: 'COURSE_EDIT_ALL', label: 'Edit all courses' }, { key: 'COURSE_PUBLISH', label: 'Publish and unpublish courses' }, { key: 'COURSE_DELETE', label: 'Delete courses' }, { key: 'SCHOOL_ASSIGN', label: 'Assign courses to schools' }, { key: 'ANALYTICS_VIEW', label: 'View analytics' }, { key: 'SCHOOL_CREATE', label: 'Create schools' }, { key: 'USER_CREATE', label: 'Create users' }, { key: 'USER_DELETE', label: 'Delete users' }, { key: 'AUDIT_VIEW', label: 'View audit history' }]
+  const permissionOptions = [{ key: 'HOME_CONTENT_MANAGE', label: 'Manage homepage content' }, { key: 'COURSE_CREATE', label: 'Create courses' }, { key: 'COURSE_EDIT_OWN', label: 'Edit own courses' }, { key: 'COURSE_EDIT_ALL', label: 'Edit all courses' }, { key: 'COURSE_PUBLISH', label: 'Publish and unpublish courses' }, { key: 'COURSE_DELETE', label: 'Delete courses' }, { key: 'SCHOOL_ASSIGN', label: 'Assign courses to schools' }, { key: 'ANALYTICS_VIEW', label: 'View analytics' }, { key: 'SCHOOL_CREATE', label: 'Create schools' }, { key: 'USER_CREATE', label: 'Create users' }, { key: 'USER_RESET_PASSWORD', label: 'Reset user passwords' }, { key: 'USER_DELETE', label: 'Delete users' }, { key: 'AUDIT_VIEW', label: 'View audit history' }]
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
-    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN') { router.push('/dashboard'); return }
+    if (status === 'authenticated' && !canManageUsers && !canResetPasswords) { router.push('/dashboard'); return }
     if (status === 'authenticated') {
       Promise.all([fetch('/api/admin/users').then((r) => r.json()), fetch('/api/admin/schools').then((r) => r.json())]).then(([d, s]) => { setUsers(d.users ?? []); setSchools((s.schools ?? []).map((school: any) => ({ id: school.id, name: school.name }))); setLoading(false) }).catch(() => setLoading(false))
     }
-  }, [status, session, router])
+  }, [status, session, router, canManageUsers, canResetPasswords])
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault(); setCreateError(''); setSetup(null)
@@ -112,8 +114,8 @@ export default function AdminUsersPage() {
       <div className="page-heading">
         <div><p className="eyebrow">Platform administration</p><h1>Users</h1><p className="muted">Manage Atlas Admins, instructors, headteachers and teachers.</p></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="secondary-button" onClick={() => router.push('/admin/invitations')}><Mail size={16} /> Pending invitations</button>
-          <button className="primary-button" onClick={() => setShowCreate(!showCreate)}><Plus size={16} /> Add user</button>
+          {canManageUsers && <button className="secondary-button" onClick={() => router.push('/admin/invitations')}><Mail size={16} /> Pending invitations</button>}
+          {canManageUsers && <button className="primary-button" onClick={() => setShowCreate(!showCreate)}><Plus size={16} /> Add user</button>}
         </div>
       </div>
 
@@ -176,10 +178,10 @@ export default function AdminUsersPage() {
                       <span style={{ color: 'var(--muted)', fontSize: 13 }}>You</span>
                     ) : (
                       <span style={{ display: 'inline-flex', gap: 5 }} aria-label={`Actions for ${user.name}`}>
-                        <button className="icon-button" title={user.status === 'DISABLED' ? 'Enable user' : 'Disable user'} aria-label={`${user.status === 'DISABLED' ? 'Enable' : 'Disable'} ${user.name}`} onClick={() => toggleUser(user)}><Power size={16} /></button>
-                        {user.role === 'ATLAS_EMPLOYEE' && <button className="icon-button" title="Edit permissions" aria-label={`Edit permissions for ${user.name}`} onClick={() => { setEditingPermissions(user); setPermissionDraft(user.permissions ?? []) }}><ShieldCheck size={16} /></button>}
-                        <button className="icon-button" title="Reset password" aria-label={`Reset password for ${user.name}`} onClick={() => resetPassword(user)}><KeyRound size={16} /></button>
-                        <button className="icon-button" title="Delete user" aria-label={`Delete ${user.name}`} onClick={() => deleteUser(user)}><Trash2 size={16} style={{ color: '#b42318' }} /></button>
+                        {canManageUsers && <button className="icon-button" title={user.status === 'DISABLED' ? 'Enable user' : 'Disable user'} aria-label={`${user.status === 'DISABLED' ? 'Enable' : 'Disable'} ${user.name}`} onClick={() => toggleUser(user)}><Power size={16} /></button>}
+                        {canManageUsers && user.role === 'ATLAS_EMPLOYEE' && <button className="icon-button" title="Edit permissions" aria-label={`Edit permissions for ${user.name}`} onClick={() => { setEditingPermissions(user); setPermissionDraft(user.permissions ?? []) }}><ShieldCheck size={16} /></button>}
+                        {canResetPasswords && <button className="icon-button" title="Reset password" aria-label={`Reset password for ${user.name}`} onClick={() => resetPassword(user)}><KeyRound size={16} /></button>}
+                        {canManageUsers && <button className="icon-button" title="Delete user" aria-label={`Delete ${user.name}`} onClick={() => deleteUser(user)}><Trash2 size={16} style={{ color: '#b42318' }} /></button>}
                       </span>
                     )}
                   </td>

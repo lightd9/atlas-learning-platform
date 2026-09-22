@@ -35,6 +35,13 @@ export async function requireAtlasEmployee() {
   return user
 }
 
+export const USER_RESET_PASSWORD = 'USER_RESET_PASSWORD'
+export async function requireUserPasswordResetAccess() {
+  const user = await requireAtlasEmployee()
+  if (user.role !== 'ATLAS_ADMIN' && !(Array.isArray(user.permissions) && user.permissions.includes(USER_RESET_PASSWORD))) throw new Error('FORBIDDEN')
+  return user
+}
+
 export async function requireCourseEditor() {
   const user = await requireSchoolUser()
   if (user.role !== 'ATLAS_ADMIN' && user.role !== 'ATLAS_EMPLOYEE' && user.role !== 'INSTRUCTOR') throw new Error('FORBIDDEN')

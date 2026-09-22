@@ -59,6 +59,10 @@ export default function DashboardPage() {
       router.replace('/admin')
       return
     }
+    if (status === 'authenticated' && session?.user?.role === 'ATLAS_EMPLOYEE') {
+      router.replace('/admin')
+      return
+    }
     if (status === 'authenticated' && session?.user?.role === 'INSTRUCTOR') {
       router.replace('/admin/courses')
       return

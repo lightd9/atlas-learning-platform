@@ -22,6 +22,7 @@ export default function AuthShell({ children, active }: { children: ReactNode; a
   const user = session?.user
   const isHeadteacher = user?.role === 'HEADTEACHER'
   const isAtlasAdmin = user?.role === 'ATLAS_ADMIN'
+  const isAtlasEmployee = user?.role === 'ATLAS_EMPLOYEE'
   const isInstructor = user?.role === 'INSTRUCTOR'
   const initials = user?.name ? getInitials(user.name) : '??'
   const [schoolName, setSchoolName] = useState<string | null>(null)
@@ -45,7 +46,7 @@ export default function AuthShell({ children, active }: { children: ReactNode; a
         <span className="school-name">{schoolName || 'Atlas Learning'}</span>
         <NotificationBell />
         <div className="avatar">{initials}</div>
-        <span className="user-name">{user?.name || 'Loading...'}<small>{user?.role === 'HEADTEACHER' ? 'Headteacher' : user?.role === 'ATLAS_ADMIN' ? 'Atlas Admin' : user?.role === 'INSTRUCTOR' ? 'Instructor' : 'Teacher'}</small></span>
+        <span className="user-name">{user?.name || 'Loading...'}<small>{user?.role === 'HEADTEACHER' ? 'Headteacher' : user?.role === 'ATLAS_ADMIN' ? 'Atlas Admin' : user?.role === 'ATLAS_EMPLOYEE' ? 'Atlas Employee' : user?.role === 'INSTRUCTOR' ? 'Instructor' : 'Teacher'}</small></span>
       </div>
     </header>
     <div className="body-layout">

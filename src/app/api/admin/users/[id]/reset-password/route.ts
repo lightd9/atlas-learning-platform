@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
-import { requireAtlasAdmin } from '@/lib/access'
+import { requireUserPasswordResetAccess } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { auditLog } from '@/lib/audit'
 import { generateTemporaryPassword } from '@/lib/passwords'
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const admin = await requireAtlasAdmin()
+    const admin = await requireUserPasswordResetAccess()
     const { id } = await params
     if (id === admin.id) return NextResponse.json({ error: 'You cannot reset your own password.' }, { status: 400 })
 
