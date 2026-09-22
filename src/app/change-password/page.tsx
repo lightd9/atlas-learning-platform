@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import Logo from '@/components/Logo'
 import PasswordInput from '@/components/PasswordInput'
@@ -9,6 +9,12 @@ import BackToHome from '@/components/BackToHome'
 import { useToast } from '@/components/Toast'
 
 export default function ChangePasswordPage() {
+  return <Suspense>
+    <ChangePasswordForm />
+  </Suspense>
+}
+
+function ChangePasswordForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const requestedCallbackUrl = searchParams.get('callbackUrl')
