@@ -11,8 +11,6 @@ import {
   GripVertical,
   Loader2,
   Pencil,
-  RotateCcw,
-  Save,
   Search,
   Trash2,
 } from "lucide-react";
@@ -395,9 +393,7 @@ export default function HomeContentPage() {
                           <span className="published-badge">Published</span>
                         </div>
                         <p>Visible in {info.label}</p>
-                        <small>
-                          Position {index + 1} · Changes are currently unsaved
-                        </small>
+                        <small>Position {index + 1}</small>
                       </div>
                       <div className="placement-actions">
                         <Link
@@ -452,19 +448,15 @@ export default function HomeContentPage() {
             onClick={discardChanges}
             disabled={!dirty || saving}
           >
-            <RotateCcw size={15} /> Discard
+            Discard
           </button>
           <button
             className="primary-button"
             onClick={saveChanges}
             disabled={!dirty || saving}
           >
-            {saving ? (
-              <Loader2 className="spin" size={15} />
-            ) : (
-              <Save size={15} />
-            )}{" "}
-            Save
+            {saving ? <Loader2 className="spin" size={15} /> : null}
+            {saving ? ' Saving' : 'Save'}
           </button>
         </div>
         <p className="content-footnote">

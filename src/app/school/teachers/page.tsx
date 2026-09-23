@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, CheckSquare, FileUp, MoreHorizontal, Search, Trash2, Users, Plus, X, RefreshCw, Ban } from 'lucide-react'
+import { CheckCircle2, CheckSquare, FileUp, MoreHorizontal, Search, Trash2, Users, Plus, RefreshCw, Ban } from 'lucide-react'
 import AuthShell from '@/components/AuthShell'
+import AppModal from '@/components/AppModal'
 import SetPasswordModal from '@/components/SetPasswordModal'
 import { useToast } from '@/components/Toast'
 
@@ -179,7 +180,7 @@ export default function TeachersPage() {
           <h1>Manage teachers</h1>
           <p className="muted">Invite and manage your school&apos;s learning team.</p>
         </div>
-        <button className="primary-button" onClick={() => setShowInvite(!showInvite)}>
+        <button className="primary-button" onClick={() => { setInviteError(''); setShowInvite(true) }}>
           <Plus size={17} /> Add teacher
         </button>
       </div>
@@ -197,20 +198,27 @@ export default function TeachersPage() {
       />}
 
       {showInvite && (
-        <div className="panel" style={{ marginBottom: 24, maxWidth: 500 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0 }}>Invite a teacher</h3>
-            <button className="icon-button" onClick={() => setShowInvite(false)}><X size={18} /></button>
-          </div>
-          <form onSubmit={handleInvite} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <input placeholder="Full name" value={inviteName} onChange={(e) => setInviteName(e.target.value)} required style={inputStyle} />
-            <input placeholder="Email address" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required style={inputStyle} />
+        <AppModal
+          title="Invite a teacher"
+          eyebrow="Your school"
+          description="Send an invitation so a new teacher can join your school."
+          icon={<Users size={18} />}
+          width={480}
+          dirty={inviteName.trim() !== '' || inviteEmail.trim() !== ''}
+          onClose={() => { setShowInvite(false); setInviteName(''); setInviteEmail(''); setInviteError('') }}
+          footer={
+            <>
+              <button className="secondary-button" onClick={() => { setShowInvite(false); setInviteName(''); setInviteEmail(''); setInviteError('') }}>Cancel</button>
+              <button className="primary-button" type="submit" form="invite-teacher-form" disabled={inviteSending}>{inviteSending ? 'Sending...' : 'Send invitation'}</button>
+            </>
+          }
+        >
+          <form id="invite-teacher-form" onSubmit={handleInvite} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600 }}>Full name<input placeholder="Full name" value={inviteName} onChange={(e) => setInviteName(e.target.value)} required style={{ ...inputStyle, width: '100%' }} /></label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600 }}>Email address<input placeholder="Email address" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required style={{ ...inputStyle, width: '100%' }} /></label>
             {inviteError && <p style={{ color: '#e53e3e', fontSize: 12, margin: 0 }}>{inviteError}</p>}
-            <button type="submit" className="primary-button" disabled={inviteSending} style={{ width: '100%', justifyContent: 'center' }}>
-              {inviteSending ? 'Sending...' : 'Send invitation'}
-            </button>
           </form>
-        </div>
+        </AppModal>
       )}
 
       <div className="team-actions">

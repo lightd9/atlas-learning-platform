@@ -5,7 +5,6 @@ import Image from "next/image";
 import {
   ArrowLeft,
   ArrowRight,
-  BookOpen,
   ChevronLeft,
   ChevronRight,
   CalendarDays,
@@ -564,9 +563,6 @@ export default function HomePage() {
                     </div>
                     <div className="atlas-course-meta">
                       <span>
-                        <BookOpen size={13} /> {index + 5} lessons
-                      </span>
-                      <span>
                         <Clock3 size={13} /> {course.duration}
                       </span>
                     </div>
@@ -633,7 +629,6 @@ export default function HomePage() {
                   <strong>4.{7 + index}</strong>
                 </div>
                 <p className="atlas-skill-meta">
-                  <BookOpen size={13} /> {6 + index} videos
                   <Clock3 size={13} /> {2 + index} hours
                 </p>
                 <Link href="/login">Join course</Link>

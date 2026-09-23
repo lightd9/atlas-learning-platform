@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireCourseEditor } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { auditLog } from '@/lib/audit'
 
 const lessonSchema = z.object({
   title: z.string().min(1).max(200),
@@ -124,6 +125,7 @@ export async function POST(request: Request) {
         },
       },
     })
+    await auditLog({ action: 'COURSE.CREATE', userId: editor.id, details: `Course created: ${course.title} (${course.id})` })
     return NextResponse.json({ course }, { status: 201 })
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') return NextResponse.json({ error: 'You are not authorized to create courses.' }, { status: 401 })

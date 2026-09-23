@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { BookOpen, Plus, Search, Trash2, GripVertical, Eye, Pencil, Globe, EyeOff } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
+import AppModal from '@/components/AppModal'
 import { useToast } from '@/components/Toast'
 import DurationInput from '@/components/DurationInput'
 import { courseTotalSeconds, formatClock } from '@/lib/format'
@@ -113,17 +114,51 @@ export default function AdminCoursesPage() {
     return matchesSearch && matchesStatus && matchesSection
   })
 
+  const createDirty =
+    form.slug !== '' ||
+    form.title !== '' ||
+    form.description !== '' ||
+    form.coverImageUrl !== '' ||
+    form.muxPlaybackId !== '' ||
+    form.notes !== '' ||
+    form.durationSeconds !== 1200 ||
+    resources.length > 0 ||
+    modules.length > 0 ||
+    availabilityMode === 'SELECTED'
+
+  function resetCreateForm() {
+    setForm({ slug: '', title: '', description: '', coverImageUrl: '', durationSeconds: 1200, muxPlaybackId: '', notes: '' })
+    setResources([])
+    setModules([])
+    setAvailabilityMode('ALL')
+    setSelectedSchoolIds(schools.map((school) => school.id))
+    setError('')
+  }
+
   return <AdminShell active="courses">
     <div className="page-wrap">
       <div className="page-heading">
         <div><p className="eyebrow">Course management</p><h1>Courses</h1><p className="muted">Build, preview and organize Atlas learning content.</p></div>
-        <button className="primary-button" onClick={() => setShowCreate(!showCreate)}><Plus size={17} /> Add course</button>
+        <button className="primary-button" onClick={() => { setError(''); setShowCreate(true) }}><Plus size={17} /> Add course</button>
       </div>
 
       {showCreate && (
-        <div className="panel" style={{ marginBottom: 24 }}>
-          <h3 style={{ margin: '0 0 16px' }}>Create new course</h3>
-          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760 }}>
+        <AppModal
+          title="Create new course"
+          eyebrow="Course management"
+          description="Add the basics, optional resources, and the first modules and lessons."
+          icon={<BookOpen size={18} />}
+          width={760}
+          dirty={createDirty}
+          onClose={() => { setShowCreate(false); resetCreateForm() }}
+          footer={
+            <>
+              <button className="secondary-button" onClick={() => { setShowCreate(false); resetCreateForm() }}>Cancel</button>
+              <button className="primary-button" type="submit" form="create-course-form">Create course</button>
+            </>
+          }
+        >
+          <form id="create-course-form" onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <fieldset style={fieldSetStyle}><legend style={legendStyle}>Course basics</legend>
             <label style={labelStyle}>Course title <span aria-hidden="true">*</span><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required style={inputStyle} /></label>
             <label style={labelStyle}>Course URL slug <span aria-hidden="true">*</span><input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') })} required placeholder="e.g. ai-intro" style={inputStyle} /><small style={helperStyle}>Used in the course URL. It cannot be changed later.</small></label>
@@ -171,12 +206,8 @@ export default function AdminCoursesPage() {
             </div>
 
             {error && <p style={{ color: '#e53e3e', margin: 0, fontSize: 13 }}>{error}</p>}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="submit" className="primary-button">Create course</button>
-              <button type="button" className="secondary-button" onClick={() => { setShowCreate(false); setModules([]); setResources([]) }}>Cancel</button>
-            </div>
           </form>
-        </div>
+        </AppModal>
       )}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -236,12 +267,12 @@ export default function AdminCoursesPage() {
 }
 
 const inputStyle: React.CSSProperties = {
-  height: 40, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#00000',
+  height: 40, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#fff',
 }
 
 const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: '#374151', display: 'flex', flexDirection: 'column', gap: 3 }
-const selectStyle: React.CSSProperties = { height: 40, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#00000' }
-const smallInputStyle: React.CSSProperties = { height: 34, borderRadius: 7, border: '1px solid var(--line)', padding: '0 9px', fontSize: 12, background: '#00000', width: '100%' }
+const selectStyle: React.CSSProperties = { height: 40, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#fff' }
+const smallInputStyle: React.CSSProperties = { height: 34, borderRadius: 7, border: '1px solid var(--line)', padding: '0 9px', fontSize: 12, background: '#fff', width: '100%' }
 const iconButtonStyle: React.CSSProperties = { width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', verticalAlign: 'middle', borderRadius: 6 }
 const fieldSetStyle: React.CSSProperties = { border: '1px solid var(--line)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }
 const legendStyle: React.CSSProperties = { padding: '0 6px', fontSize: 13, fontWeight: 700 }

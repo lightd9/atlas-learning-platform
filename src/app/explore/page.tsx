@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, BookOpen, Clock3, Heart, Star } from "lucide-react";
+import { ArrowRight, Clock3, Heart, Star } from "lucide-react";
 import PublicFooter from "@/components/PublicFooter";
 import PublicNavbar from "@/components/PublicNavbar";
 import { categoryId, publicCourseCategories, publicCourses as fallbackPublicCourses } from "@/data/publicCourses";
@@ -95,7 +95,6 @@ export default async function ExplorePage({
                         <h3>{course.title}</h3>
                         <div className="atlas-course-rating"><CourseStars /><strong>4.{index === 0 ? "9" : "8"}</strong></div>
                         <div className="atlas-course-meta">
-                          <span><BookOpen size={13} /> {course.lessons} lessons</span>
                           <span><Clock3 size={13} /> {course.duration}</span>
                         </div>
                         <Link href={course.status === "available" ? "/login" : "/#roadmap"}>

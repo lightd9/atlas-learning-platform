@@ -69,7 +69,7 @@ export default function LessonVideoUploader({ courseId, lessonId, currentPlaybac
   }
 
   async function removeVideo() {
-    if (!window.confirm('Remove this video from the lesson? The Mux asset will be retained for recovery.')) return
+    if (!window.confirm('Remove this video from the lesson? The Mux asset will be retained in your Mux account.')) return
     setError('')
     const response = await fetch(endpoint, { method: 'DELETE' })
     const data = await response.json()

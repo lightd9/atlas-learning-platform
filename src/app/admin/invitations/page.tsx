@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Mail, UsersRound, RefreshCw, Ban, CheckCircle2 } from 'lucide-react'
+import { Mail, UsersRound, RefreshCw, Trash2, CheckCircle2 } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import SetupLinkCard from '@/components/SetupLinkCard'
 import SetPasswordModal from '@/components/SetPasswordModal'
@@ -59,13 +59,13 @@ export default function AdminInvitationsPage() {
     load()
   }
 
-  async function revokeInvitation(inv: AdminInvitation) {
-    if (!window.confirm(`Revoke the invitation for ${inv.name} (${inv.email})? The invitee will no longer be able to set up an account.`)) return
+  async function deleteInvitation(inv: AdminInvitation) {
+    if (!window.confirm(`Delete the invitation for ${inv.name} (${inv.email})? The invitee will no longer be able to set up an account.`)) return
     const res = await fetch(`/api/invitations/${inv.id}`, { method: 'DELETE' })
     if (res.ok) {
       setInvitations(invitations.filter((item) => item.id !== inv.id))
-      toast('Invitation revoked', 'success')
-    } else toast('Unable to revoke invitation', 'error')
+      toast('Invitation deleted', 'success')
+    } else toast('Unable to delete invitation', 'error')
   }
 
   async function acceptInvitation(inv: AdminInvitation, password: string) {
@@ -82,7 +82,7 @@ export default function AdminInvitationsPage() {
 
   function handleInvitationAction(inv: AdminInvitation, action: string) {
     if (action === 'resend') resendInvitation(inv)
-    if (action === 'revoke') revokeInvitation(inv)
+    if (action === 'delete') deleteInvitation(inv)
     if (action === 'accept') setAcceptTarget(inv)
   }
 
@@ -144,7 +144,7 @@ export default function AdminInvitationsPage() {
                       <span style={{ display: 'inline-flex', gap: 5 }} aria-label={`Actions for invitation to ${inv.name}`}>
                         <button className="icon-button" title="Accept & set password" aria-label={`Accept invitation and set password for ${inv.name}`} onClick={() => handleInvitationAction(inv, 'accept')}><CheckCircle2 size={16} style={{ color: '#047857' }} /></button>
                         <button className="icon-button" title="Resend invitation" aria-label={`Resend invitation to ${inv.name}`} onClick={() => handleInvitationAction(inv, 'resend')}><RefreshCw size={16} /></button>
-                        {inv.status !== 'REVOKED' && <button className="icon-button" title="Revoke invitation" aria-label={`Revoke invitation for ${inv.name}`} onClick={() => handleInvitationAction(inv, 'revoke')}><Ban size={16} style={{ color: '#b42318' }} /></button>}
+                        {inv.status !== 'REVOKED' && <button className="icon-button" title="Delete invitation" aria-label={`Delete invitation for ${inv.name}`} onClick={() => handleInvitationAction(inv, 'delete')}><Trash2 size={16} style={{ color: '#b42318' }} /></button>}
                       </span>
                     </td>
                   </tr>

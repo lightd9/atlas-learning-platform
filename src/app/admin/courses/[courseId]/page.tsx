@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { ArrowDown, ArrowLeft, ArrowUp, Save, Plus, Trash2, Video, ChevronDown } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, Plus, Trash2, Video, ChevronDown } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import { useToast } from '@/components/Toast'
 import LessonVideoUploader from '@/components/LessonVideoUploader'
@@ -24,7 +24,6 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
   const [form, setForm] = useState({ title: '', description: '', coverImageUrl: '', status: 'DRAFT', sectionId: '', notes: '' })
   const [schools, setSchools] = useState<{ id: string; name: string }[]>([])
   const [modules, setModules] = useState<ApiCourseModule[]>([])
-  const [archivedModules, setArchivedModules] = useState<ApiCourseModule[]>([])
   const [contentSaving, setContentSaving] = useState(false)
   const [contentSaved, setContentSaved] = useState(false)
   const [contentError, setContentError] = useState('')
@@ -54,8 +53,8 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
         setCourse(c)
         setForm({ title: c.title, description: c.description, coverImageUrl: c.coverImageUrl || '', status: c.status ?? (c.published ? 'PUBLISHED' : 'DRAFT'), sectionId: c.sectionId || '', notes: c.notes || '' })
         setResources(c.resources ?? [])
-        Promise.all([fetch(`/api/admin/courses/${courseId}/content`).then((r) => r.json()), fetch(`/api/admin/courses/${courseId}/content?includeArchived=true`).then((r) => r.json()), fetch('/api/admin/schools').then((r) => r.json())]).then(([contentData, archivedData, schoolData]) => {
-          setModules(contentData.modules ?? []); setArchivedModules((archivedData.modules ?? []).filter((module: ApiCourseModule) => module.archived || module.lessons.some((lesson) => lesson.archived)))
+        Promise.all([fetch(`/api/admin/courses/${courseId}/content`).then((r) => r.json()), fetch('/api/admin/schools').then((r) => r.json())]).then(([contentData, schoolData]) => {
+          setModules(contentData.modules ?? [])
           const availableSchools = (schoolData.schools ?? []).map((school: any) => ({ id: school.id, name: school.name }))
           setSchools(availableSchools)
           const accessBySchool = new Map((c.schoolAccess ?? []).map((entry: any) => [entry.schoolId, entry.enabled]))
@@ -139,12 +138,6 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
     } else toast('Unable to save course access', 'error')
   }
 
-  function discardSchoolAccessChanges() {
-    setSelectedSchoolIds([...savedSchoolIds])
-    setAccessSaved(false)
-    toast('Changes discarded', 'info')
-  }
-
   const schoolAccessDirty = selectedSchoolIds.length !== savedSchoolIds.length || selectedSchoolIds.some((id) => !savedSchoolIds.includes(id))
 
   async function addResource(event: React.FormEvent) {
@@ -180,13 +173,6 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
     const responses = await Promise.all(ordered.map((resource) => fetch(`/api/admin/courses/${courseId}/resources`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(resource) })))
     if (responses.some((response) => !response.ok)) { setResourceError('Unable to save resource order. Refresh and try again.'); return }
     toast('Resource order updated', 'success')
-  }
-
-  async function restoreContent(moduleId?: string, lessonId?: string) {
-    const response = await fetch(`/api/admin/courses/${courseId}/content`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ moduleId, lessonId }) })
-    if (!response.ok) { toast('Unable to restore content', 'error'); return }
-    const refreshed = await fetch(`/api/admin/courses/${courseId}/content`).then((r) => r.json())
-    setModules(refreshed.modules ?? []); toast('Content restored', 'success')
   }
 
   return <AdminShell active="courses">
@@ -229,7 +215,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
               {course.muxPlaybackId && <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #f0d59a', background: '#fffaf0', color: '#7a5414', fontSize: 12 }}><strong>Legacy course video retained.</strong> It has been preserved as a lesson for compatibility. Add or manage videos from individual lessons.</div>}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button type="submit" className="primary-button" disabled={saving}>
-                  <Save size={17} /> {saving ? 'Saving...' : 'Save changes'}
+                  {saving ? 'Saving...' : 'Save changes'}
                 </button>
                 {saved && <span style={{ color: 'var(--green)', fontSize: 13 }}>Saved!</span>}
               </div>
@@ -250,8 +236,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                     })}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-                    <button className="primary-button" onClick={saveSchoolAccess} disabled={accessSaving || !schoolAccessDirty}><Save size={16} /> {accessSaving ? 'Saving...' : 'Save changes'}</button>
-                    <button className="secondary-button" onClick={discardSchoolAccessChanges} disabled={accessSaving || !schoolAccessDirty}>Discard changes</button>
+                    <button className="primary-button" onClick={saveSchoolAccess} disabled={accessSaving || !schoolAccessDirty}>{accessSaving ? 'Saving...' : 'Save changes'}</button>
                     {accessSaved && <span style={{ color: 'var(--green)', fontSize: 12 }}>Saved</span>}
                   </div>
                   </>
@@ -303,10 +288,9 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
               </div>)}
             </div>
             {contentError && <p role="alert" style={{ color: '#b42318', fontSize: 12 }}>{contentError}</p>}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18 }}><button className="primary-button" onClick={saveContent} disabled={contentSaving}><Save size={16} /> {contentSaving ? 'Saving content...' : 'Save modules & lessons'}</button>{contentSaved && <span style={{ color: 'var(--green)', fontSize: 13 }}>Content saved</span>}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18 }}><button className="primary-button" onClick={saveContent} disabled={contentSaving}>{contentSaving ? 'Saving content...' : 'Save modules & lessons'}</button>{contentSaved && <span style={{ color: 'var(--green)', fontSize: 13 }}>Content saved</span>}</div>
           </section>
 
-          {archivedModules.length > 0 && <section className="panel" style={{ marginTop: 24 }}><div className="panel-head"><div><p className="eyebrow">Content recovery</p><h3>Archived modules and lessons</h3><p className="muted" style={{ fontSize: 12 }}>Archived content is hidden from learners but its progress history is preserved.</p></div></div>{archivedModules.map((module) => <div key={module.id} style={{ borderBottom: '1px solid var(--line)', padding: '10px 0' }}>{module.archived && <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span><strong>{module.title}</strong> <small className="muted">Module</small></span><button className="secondary-button" type="button" onClick={() => restoreContent(module.id)}>Restore module</button></div>}{!module.archived && module.lessons.filter((lesson) => lesson.archived).map((lesson) => <div key={lesson.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 0 0 18px' }}><span>{lesson.title} <small className="muted">Lesson</small></span><button className="text-button" type="button" onClick={() => restoreContent(undefined, lesson.id)}>Restore</button></div>)}</div>)}</section>}
 
           <section className="panel" style={{ marginTop: 24 }}>
             <div className="panel-head"><div><p className="eyebrow">Learning materials</p><h3>Downloadable resources</h3><p className="muted" style={{ fontSize: 12 }}>Add links to PDFs, worksheets, templates or other files learners should download.</p></div></div>

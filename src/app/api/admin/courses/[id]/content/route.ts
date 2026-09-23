@@ -28,36 +28,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params
     await requireOwnedCourseEditor(id)
-    const includeArchived = new URL(request.url).searchParams.get('includeArchived') === 'true'
-    const course = await prisma.course.findUnique({ where: { id }, include: { modules: { where: includeArchived ? undefined : { archived: false }, include: { lessons: { where: includeArchived ? undefined : { archived: false }, orderBy: { sortOrder: 'asc' } } }, orderBy: { sortOrder: 'asc' } } } })
+    const course = await prisma.course.findUnique({ where: { id }, include: { modules: { where: { archived: false }, include: { lessons: { where: { archived: false }, orderBy: { sortOrder: 'asc' } } }, orderBy: { sortOrder: 'asc' } } } })
     if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
     return NextResponse.json({ modules: course.modules })
   } catch (error) {
     return apiErrorResponse(error, 'Unable to load course content')
-  }
-}
-
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id: courseId } = await params
-    await requireOwnedCourseEditor(courseId)
-    const body = z.object({ moduleId: z.string().optional(), lessonId: z.string().optional() }).refine((value) => value.moduleId || value.lessonId).safeParse(await request.json())
-    if (!body.success) return NextResponse.json({ error: 'Provide a module or lesson to restore.' }, { status: 400 })
-    if (body.data.lessonId) {
-      const lesson = await prisma.lesson.findFirst({ where: { id: body.data.lessonId, module: { courseId } } })
-      if (!lesson) return NextResponse.json({ error: 'Lesson not found.' }, { status: 404 })
-      await prisma.lesson.update({ where: { id: lesson.id }, data: { archived: false, published: true } })
-    } else {
-      const module = await prisma.courseModule.findFirst({ where: { id: body.data.moduleId, courseId } })
-      if (!module) return NextResponse.json({ error: 'Module not found.' }, { status: 404 })
-      await prisma.$transaction([
-        prisma.courseModule.update({ where: { id: module.id }, data: { archived: false } }),
-        prisma.lesson.updateMany({ where: { moduleId: module.id }, data: { archived: false, published: true } }),
-      ])
-    }
-    return NextResponse.json({ restored: true })
-  } catch (error) {
-    return apiErrorResponse(error, 'Unable to restore course content')
   }
 }
 

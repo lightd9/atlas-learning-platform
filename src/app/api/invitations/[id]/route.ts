@@ -53,9 +53,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    await prisma.invitation.update({ where: { id }, data: { status: 'REVOKED' } })
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    return NextResponse.json({ error: 'Unable to revoke invitation' }, { status: 500 })
+      await prisma.invitation.delete({ where: { id } })
+      return NextResponse.json({ success: true })
+    } catch (error) {
+      return NextResponse.json({ error: 'Unable to delete invitation' }, { status: 500 })
   }
 }

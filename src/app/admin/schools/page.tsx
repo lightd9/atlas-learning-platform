@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Building2, Plus, Search } from 'lucide-react'
+import { Building2, Plus, School as SchoolIcon, Search } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
+import AppModal from '@/components/AppModal'
 import SetupLinkCard from '@/components/SetupLinkCard'
 import { useToast } from '@/components/Toast'
 import type { AdminSchool } from '@/types/api'
@@ -47,6 +48,9 @@ export default function AdminSchoolsPage() {
     toast('School created', 'success')
   }
 
+  const createDirty =
+    form.name.trim() !== '' || form.slug.trim() !== '' || form.headteacherEmail.trim() !== '' || form.headteacherName.trim() !== ''
+
   const filtered = schools.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase()) || s.slug.toLowerCase().includes(search.toLowerCase())
   )
@@ -55,25 +59,35 @@ export default function AdminSchoolsPage() {
     <div className="page-wrap">
       <div className="page-heading">
         <div><p className="eyebrow">Admin</p><h1>Schools</h1></div>
-        <button className="primary-button" onClick={() => setShowCreate(!showCreate)}><Plus size={17} /> Add school</button>
+        <button className="primary-button" onClick={() => { setError(''); setSetup(null); setShowCreate(true) }}><Plus size={17} /> Add school</button>
       </div>
 
+      {setup && <div style={{ marginBottom: 20, maxWidth: 360 }}><SetupLinkCard label="Headteacher setup link" setupUrl={setup.url} invitationId={setup.invitationId} expiresAt={setup.expiresAt} /></div>}
+
       {showCreate && (
-        <div className="panel" style={{ marginBottom: 24 }}>
-          <h3 style={{ margin: '0 0 16px' }}>Create new school</h3>
-          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 500 }}>
-            <input placeholder="School name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required style={inputStyle} />
-            <input placeholder="Slug (e.g. st-marys)" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} required style={inputStyle} />
-            <input placeholder="Headteacher email (optional)" value={form.headteacherEmail} onChange={(e) => setForm({ ...form, headteacherEmail: e.target.value })} style={inputStyle} />
-            <input placeholder="Headteacher name (optional)" value={form.headteacherName} onChange={(e) => setForm({ ...form, headteacherName: e.target.value })} style={inputStyle} />
+        <AppModal
+          title="Add school"
+          eyebrow="Admin"
+          description="Create a new school and optionally invite its headteacher."
+          icon={<SchoolIcon size={18} />}
+          width={520}
+          dirty={createDirty}
+          onClose={() => { setShowCreate(false); setForm({ name: '', slug: '', headteacherEmail: '', headteacherName: '' }); setError('') }}
+          footer={
+            <>
+              <button className="secondary-button" onClick={() => { setShowCreate(false); setForm({ name: '', slug: '', headteacherEmail: '', headteacherName: '' }); setError('') }}>Cancel</button>
+              <button className="primary-button" type="submit" form="create-school-form">Create school</button>
+            </>
+          }
+        >
+          <form id="create-school-form" onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label style={labelStyle}>School name<input placeholder="e.g. St Mary's Academy" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required style={inputStyle} /></label>
+            <label style={labelStyle}>Slug<input placeholder="e.g. st-marys" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} required style={inputStyle} /></label>
+            <label style={labelStyle}>Headteacher email (optional)<input placeholder="headteacher@school.com" type="email" value={form.headteacherEmail} onChange={(e) => setForm({ ...form, headteacherEmail: e.target.value })} style={inputStyle} /></label>
+            <label style={labelStyle}>Headteacher name (optional)<input placeholder="Full name" value={form.headteacherName} onChange={(e) => setForm({ ...form, headteacherName: e.target.value })} style={inputStyle} /></label>
             {error && <p style={{ color: '#e53e3e', margin: 0, fontSize: 13 }}>{error}</p>}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="submit" className="primary-button">Create school</button>
-              <button type="button" className="secondary-button" onClick={() => setShowCreate(false)}>Cancel</button>
-            </div>
-            {setup && <SetupLinkCard label="Headteacher setup link" setupUrl={setup.url} invitationId={setup.invitationId} expiresAt={setup.expiresAt} />}
           </form>
-        </div>
+        </AppModal>
       )}
 
       <div className="top-search" style={{ marginBottom: 20, width: '100%', maxWidth: 360 }}>
@@ -114,5 +128,7 @@ export default function AdminSchoolsPage() {
 }
 
 const inputStyle: React.CSSProperties = {
-  height: 40, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#00000',
+  height: 40, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#fff', width: '100%', marginTop: 4,
 }
+
+const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: '#374151', display: 'flex', flexDirection: 'column', gap: 0 }

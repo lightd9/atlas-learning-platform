@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { createInvitationToken, invitationExpiry, INVITATION_RESEND_COOLDOWN_MS } from '@/lib/invitations'
 import { roleInvitationEmail, sendEmail } from '@/lib/email'
+import { auditLog } from '@/lib/audit'
 
 const createSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
     const email = roleInvitationEmail({ name: invitation.name, role: invitation.role, setupToken: rawToken, invitedByName: admin.name, schoolName: school?.name })
     let emailDelivery: 'sent' | 'failed' = 'sent'
     try { await sendEmail({ to: invitation.email, ...email, type: 'INVITATION' }) } catch { emailDelivery = 'failed' }
+    await auditLog({ action: 'USER.CREATE', userId: admin.id, schoolId: invitation.schoolId ?? undefined, details: `User invitation created for ${invitation.name} (${invitation.email}) as ${invitation.role}` })
     return NextResponse.json({ invitation: { id: invitation.id, name: invitation.name, email: invitation.email, role: invitation.role, expiresAt: invitation.expiresAt.toISOString() }, setupUrl: `/setup/${rawToken}`, emailDelivery }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error && error.message === 'UNAUTHORIZED' ? 'Unauthorized' : 'Unable to create user invitation'
