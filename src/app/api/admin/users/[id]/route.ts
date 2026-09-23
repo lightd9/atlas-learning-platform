@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAtlasAdmin } from '@/lib/access'
+import { requireAtlasAdmin, requirePermission } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 
 const updateSchema = z.object({ status: z.enum(['ACTIVE', 'DISABLED']).optional(), permissions: z.array(z.string()).optional() }).refine((value) => value.status !== undefined || value.permissions !== undefined)
@@ -22,7 +22,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const admin = await requireAtlasAdmin()
+    const admin = await requirePermission('USER_DELETE')
     const { id } = await params
     if (id === admin.id) return NextResponse.json({ error: 'You cannot delete your own account.' }, { status: 400 })
     const user = await prisma.user.findUnique({ where: { id }, select: { id: true, email: true } })

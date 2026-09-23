@@ -37,7 +37,7 @@ export default function AdminShell({ children, active }: { children: ReactNode; 
     { key: 'analytics', label: 'Analytics', icon: <BarChart3 size={18} />, href: '/admin/analytics' },
     { key: 'audit', label: 'Audit history', icon: <ClipboardList size={18} />, href: '/admin/audit-logs' },
     { key: 'home-content', label: 'Home page content', icon: <LayoutTemplate size={18} />, href: '/admin/home-content' },
-  ].filter((item) => isAtlasAdmin || (isInstructor && (item.key === 'overview' || item.key === 'courses')) || (isAtlasEmployee && (item.key === 'overview' || item.key === 'courses' || item.key === 'analytics' || (item.key === 'home-content' && employeePermissions.includes('HOME_CONTENT_MANAGE')) || (item.key === 'schools' && employeePermissions.includes('SCHOOL_CREATE')) || (item.key === 'users' && (employeePermissions.includes('USER_CREATE') || employeePermissions.includes('USER_RESET_PASSWORD'))) || (item.key === 'audit' && employeePermissions.includes('AUDIT_VIEW')))))
+  ].filter((item) => isAtlasAdmin || (isInstructor && (item.key === 'overview' || item.key === 'courses')) || (isAtlasEmployee && (item.key === 'overview' || item.key === 'courses' || item.key === 'analytics' || (item.key === 'home-content' && employeePermissions.includes('HOME_CONTENT_MANAGE')) || (item.key === 'schools' && employeePermissions.includes('SCHOOL_CREATE')) || (item.key === 'users' && (employeePermissions.includes('USER_CREATE') || employeePermissions.includes('USER_RESET_PASSWORD') || employeePermissions.includes('USER_DELETE'))) || (item.key === 'audit' && employeePermissions.includes('AUDIT_VIEW')))))
 
   return <div className="app-shell">
     <header className="topbar">

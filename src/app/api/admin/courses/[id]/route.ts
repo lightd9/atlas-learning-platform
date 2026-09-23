@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireOwnedCourseEditor } from '@/lib/access'
+import { requireOwnedCourseEditor, requirePermission } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { apiErrorResponse } from '@/lib/api-errors'
@@ -55,6 +55,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const body = updateSchema.safeParse(await request.json())
     if (!body.success) return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
     const requestedStatus = body.data.status ?? (body.data.published === undefined ? undefined : body.data.published ? 'PUBLISHED' : 'DRAFT')
+    if (requestedStatus === 'PUBLISHED' || requestedStatus === 'ARCHIVED') await requirePermission('COURSE_PUBLISH')
     const status = editor.role === 'INSTRUCTOR'
       ? requestedStatus === 'REVIEW' ? 'REVIEW' : 'DRAFT'
       : requestedStatus
@@ -71,6 +72,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     const { id } = await params
     await requireOwnedCourseEditor(id)
+    await requirePermission('COURSE_DELETE')
     await prisma.course.delete({ where: { id } })
     return NextResponse.json({ message: 'Course permanently deleted' })
   } catch (error) {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAtlasEmployee } from '@/lib/access'
+import { requirePermission } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -21,7 +21,7 @@ const schoolCourseSelectionSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-      await requireAtlasEmployee()
+      await requirePermission('SCHOOL_ASSIGN')
     const body = accessSchema.safeParse(await request.json())
     if (!body.success) return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    await requireAtlasEmployee()
+    await requirePermission('SCHOOL_ASSIGN')
     const rawBody = await request.json()
     const schoolSelection = schoolCourseSelectionSchema.safeParse(rawBody)
     if (schoolSelection.success) {

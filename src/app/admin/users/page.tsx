@@ -14,7 +14,9 @@ export default function AdminUsersPage() {
   const router = useRouter()
   const { toast } = useToast()
   const canManageUsers = session?.user?.role === 'ATLAS_ADMIN'
+  const canCreateUsers = canManageUsers || (session?.user?.role === 'ATLAS_EMPLOYEE' && Array.isArray(session?.user?.permissions) && (session.user.permissions as string[]).includes('USER_CREATE'))
   const canResetPasswords = canManageUsers || (session?.user?.role === 'ATLAS_EMPLOYEE' && Array.isArray(session?.user?.permissions) && (session.user.permissions as string[]).includes('USER_RESET_PASSWORD'))
+  const canDeleteUsers = canManageUsers || (session?.user?.role === 'ATLAS_EMPLOYEE' && Array.isArray(session?.user?.permissions) && (session.user.permissions as string[]).includes('USER_DELETE'))
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -32,11 +34,11 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
-    if (status === 'authenticated' && !canManageUsers && !canResetPasswords) { router.push('/dashboard'); return }
+    if (status === 'authenticated' && !canManageUsers && !canResetPasswords && !canDeleteUsers) { router.push('/dashboard'); return }
     if (status === 'authenticated') {
       Promise.all([fetch('/api/admin/users').then((r) => r.json()), fetch('/api/admin/schools').then((r) => r.json())]).then(([d, s]) => { setUsers(d.users ?? []); setSchools((s.schools ?? []).map((school: any) => ({ id: school.id, name: school.name }))); setLoading(false) }).catch(() => setLoading(false))
     }
-  }, [status, session, router, canManageUsers, canResetPasswords])
+  }, [status, session, router, canManageUsers, canResetPasswords, canDeleteUsers])
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault(); setCreateError(''); setSetup(null)
@@ -115,7 +117,7 @@ export default function AdminUsersPage() {
         <div><p className="eyebrow">Platform administration</p><h1>Users</h1><p className="muted">Manage Atlas Admins, instructors, headteachers and teachers.</p></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {canManageUsers && <button className="secondary-button" onClick={() => router.push('/admin/invitations')}><Mail size={16} /> Pending invitations</button>}
-          {canManageUsers && <button className="primary-button" onClick={() => setShowCreate(!showCreate)}><Plus size={16} /> Add user</button>}
+          {canCreateUsers && <button className="primary-button" onClick={() => setShowCreate(!showCreate)}><Plus size={16} /> Add user</button>}
         </div>
       </div>
 
@@ -181,7 +183,7 @@ export default function AdminUsersPage() {
                         {canManageUsers && <button className="icon-button" title={user.status === 'DISABLED' ? 'Enable user' : 'Disable user'} aria-label={`${user.status === 'DISABLED' ? 'Enable' : 'Disable'} ${user.name}`} onClick={() => toggleUser(user)}><Power size={16} /></button>}
                         {canManageUsers && user.role === 'ATLAS_EMPLOYEE' && <button className="icon-button" title="Edit permissions" aria-label={`Edit permissions for ${user.name}`} onClick={() => { setEditingPermissions(user); setPermissionDraft(user.permissions ?? []) }}><ShieldCheck size={16} /></button>}
                         {canResetPasswords && <button className="icon-button" title="Reset password" aria-label={`Reset password for ${user.name}`} onClick={() => resetPassword(user)}><KeyRound size={16} /></button>}
-                        {canManageUsers && <button className="icon-button" title="Delete user" aria-label={`Delete ${user.name}`} onClick={() => deleteUser(user)}><Trash2 size={16} style={{ color: '#b42318' }} /></button>}
+                        {canDeleteUsers && <button className="icon-button" title="Delete user" aria-label={`Delete ${user.name}`} onClick={() => deleteUser(user)}><Trash2 size={16} style={{ color: '#b42318' }} /></button>}
                       </span>
                     )}
                   </td>

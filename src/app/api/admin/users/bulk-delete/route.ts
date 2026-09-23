@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAtlasAdmin } from '@/lib/access'
+import { requirePermission } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 
 const bulkSchema = z.object({
@@ -10,7 +10,7 @@ const bulkSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const admin = await requireAtlasAdmin()
+    const admin = await requirePermission('USER_DELETE')
     const body = bulkSchema.safeParse(await request.json())
     if (!body.success) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
     const { userIds, invitationIds } = body.data

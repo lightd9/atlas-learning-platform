@@ -14,6 +14,10 @@ export default function AdminCoursesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
+  const isAtlasAdmin = session?.user?.role === 'ATLAS_ADMIN'
+  const employeePermissions = Array.isArray(session?.user?.permissions) ? session.user.permissions as string[] : []
+  const canAssignSchools = isAtlasAdmin || (session?.user?.role === 'ATLAS_EMPLOYEE' && employeePermissions.includes('SCHOOL_ASSIGN'))
+  const canDeleteCourses = isAtlasAdmin || (session?.user?.role === 'ATLAS_EMPLOYEE' && employeePermissions.includes('COURSE_DELETE'))
   const [courses, setCourses] = useState<AdminCourse[]>([])
   const [sections, setSections] = useState<ApiCourseSection[]>([])
   const [schools, setSchools] = useState<{ id: string; name: string; active?: boolean }[]>([])
@@ -33,9 +37,9 @@ export default function AdminCoursesPage() {
     if (status === 'unauthenticated') { router.push('/login'); return }
     if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN' && session?.user?.role !== 'ATLAS_EMPLOYEE' && session?.user?.role !== 'INSTRUCTOR') { router.push('/dashboard'); return }
     if (status === 'authenticated') {
-      Promise.all([fetch('/api/admin/courses').then((r) => r.json()), session?.user?.role === 'ATLAS_ADMIN' ? fetch('/api/admin/course-sections').then((r) => r.json()) : Promise.resolve({ sections: [] }), session?.user?.role === 'ATLAS_ADMIN' ? fetch('/api/admin/schools').then((r) => r.json()) : Promise.resolve({ schools: [] })]).then(([courseData, sectionData, schoolData]) => { const activeSchools = (schoolData.schools ?? []).filter((school: { active?: boolean }) => school.active !== false); setCourses(courseData.courses ?? []); setSections(sectionData.sections ?? []); setSchools(activeSchools); setSelectedSchoolIds(activeSchools.map((school: { id: string }) => school.id)); setLoading(false) }).catch(() => setLoading(false))
+      Promise.all([fetch('/api/admin/courses').then((r) => r.json()), isAtlasAdmin ? fetch('/api/admin/course-sections').then((r) => r.json()) : Promise.resolve({ sections: [] }), canAssignSchools ? fetch('/api/admin/schools').then((r) => r.json()) : Promise.resolve({ schools: [] })]).then(([courseData, sectionData, schoolData]) => { const activeSchools = (schoolData.schools ?? []).filter((school: { active?: boolean }) => school.active !== false); setCourses(courseData.courses ?? []); setSections(sectionData.sections ?? []); setSchools(activeSchools); setSelectedSchoolIds(activeSchools.map((school: { id: string }) => school.id)); setLoading(false) }).catch(() => setLoading(false))
     }
-  }, [status, session, router])
+  }, [status, session, router, isAtlasAdmin, canAssignSchools])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -60,7 +64,7 @@ export default function AdminCoursesPage() {
       toast(message, 'error')
       return
     }
-    if (session?.user?.role === 'ATLAS_ADMIN' && availabilityMode === 'SELECTED') {
+    if (canAssignSchools && availabilityMode === 'SELECTED') {
       const accessResponse = await fetch('/api/admin/school-access', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ courseId: data.course.id, schoolIds: selectedSchoolIds }) })
       if (!accessResponse.ok) toast('Course created, but school availability could not be saved. Open Edit to try again.', 'error')
     }

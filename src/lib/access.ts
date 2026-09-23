@@ -74,6 +74,12 @@ export async function requireUsersViewer() {
   return user
 }
 
+export async function requireSchoolDirectoryAccess() {
+  const user = await requireSchoolUser()
+  if (!hasPermission(user, 'SCHOOL_CREATE') && !hasPermission(user, 'USER_CREATE') && !hasPermission(user, 'SCHOOL_ASSIGN')) throw new Error('FORBIDDEN')
+  return user
+}
+
 export async function requireOwnedCourseEditor(courseId: string) {
   const user = await requireCourseEditor()
   const course = await prisma.course.findUnique({ where: { id: courseId }, select: { createdById: true } })

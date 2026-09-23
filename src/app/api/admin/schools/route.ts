@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAtlasAdmin, requirePermission } from '@/lib/access'
+import { requirePermission, requireSchoolDirectoryAccess } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { createInvitationToken, invitationExpiry } from '@/lib/invitations'
 import { headteacherSetupEmail, sendEmail } from '@/lib/email'
@@ -7,7 +7,7 @@ import { auditLog } from '@/lib/audit'
 
 export async function GET() {
   try {
-    await requirePermission('SCHOOL_CREATE')
+    await requireSchoolDirectoryAccess()
     const [schools, totalPublishedCourses] = await Promise.all([prisma.school.findMany({
       include: {
         _count: { select: { users: true } },
@@ -33,7 +33,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const admin = await requireAtlasAdmin()
+    const admin = await requirePermission('SCHOOL_CREATE')
     const body = await request.json()
     const { name, slug, headteacherEmail, headteacherName } = body
     if (!name || !slug) return NextResponse.json({ error: 'Name and slug are required' }, { status: 400 })

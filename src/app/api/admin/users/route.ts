@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAtlasAdmin, requireUserPasswordResetAccess, requireUsersViewer } from '@/lib/access'
+import { requirePermission, requireUserPasswordResetAccess, requireUsersViewer } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { createInvitationToken, invitationExpiry, INVITATION_RESEND_COOLDOWN_MS } from '@/lib/invitations'
@@ -40,7 +40,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const admin = await requireAtlasAdmin()
+    const admin = await requirePermission('USER_CREATE')
     const body = createSchema.safeParse(await request.json())
     if (!body.success) return NextResponse.json({ error: 'Enter a valid name, email and role.' }, { status: 400 })
     if (body.data.role === 'HEADTEACHER' && !body.data.schoolId) return NextResponse.json({ error: 'Select a school for a headteacher.' }, { status: 400 })

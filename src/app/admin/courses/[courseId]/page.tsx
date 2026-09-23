@@ -221,9 +221,9 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                 Status
                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} style={inputStyle}>
                   <option value="DRAFT">Draft</option><option value="REVIEW">Ready for review</option>
-                  {session?.user?.role === 'ATLAS_ADMIN' && <><option value="PUBLISHED">Published</option><option value="ARCHIVED">Archived</option></>}
+              {(session?.user?.role === 'ATLAS_ADMIN' || session?.user?.role === 'ATLAS_EMPLOYEE') && <><option value="PUBLISHED">Published</option><option value="ARCHIVED">Archived</option></>}
                 </select>
-                <small style={{ color: 'var(--muted)', fontSize: 11, fontWeight: 400 }}>{session?.user?.role === 'INSTRUCTOR' ? 'Only Atlas Admins can publish. You can submit this course for review.' : 'Only published courses are visible to schools.'}</small>
+              <small style={{ color: 'var(--muted)', fontSize: 11, fontWeight: 400 }}>{session?.user?.role === 'INSTRUCTOR' ? 'Only Atlas Admins and Atlas Employees can publish. You can submit this course for review.' : 'Only published courses are visible to schools.'}</small>
               </label>
               <div style={{ padding: '10px 12px', borderRadius: 8, background: '#f7f8fb', color: 'var(--muted)', fontSize: 12 }}><strong style={{ color: 'var(--navy)' }}>Course duration: </strong>{Math.floor(courseTotalSeconds(course) / 60)} min {courseTotalSeconds(course) % 60 ? `${courseTotalSeconds(course) % 60} sec` : ''}<br /><small>Calculated from the lesson durations below.</small></div>
               {course.muxPlaybackId && <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #f0d59a', background: '#fffaf0', color: '#7a5414', fontSize: 12 }}><strong>Legacy course video retained.</strong> It has been preserved as a lesson for compatibility. Add or manage videos from individual lessons.</div>}
