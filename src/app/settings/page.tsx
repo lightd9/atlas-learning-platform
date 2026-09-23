@@ -1,74 +1,37 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
-import { CheckCircle2, LockKeyhole, Save, ShieldCheck, UserRound } from 'lucide-react'
+import { signOut, useSession } from 'next-auth/react'
+import { Bell, CheckCircle2, KeyRound, LockKeyhole, Save, Trash2, UserRound } from 'lucide-react'
 import AccountShell from '@/components/AccountShell'
 import { useToast } from '@/components/Toast'
 import PasswordInput from '@/components/PasswordInput'
 
+type SettingsTab = 'profile' | 'password' | 'notifications' | 'delete'
+
 export default function SettingsPage() {
-  const { update } = useSession()
-  const { toast } = useToast()
-  const [schoolName, setSchoolName] = useState('')
-  const [email, setEmail] = useState('')
-  const [name, setName] = useState('')
-  const [role, setRole] = useState('')
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [passwordError, setPasswordError] = useState('')
-  const [passwordMessage, setPasswordMessage] = useState('')
-  const [savingPassword, setSavingPassword] = useState(false)
-  const [emailUpdates, setEmailUpdates] = useState(true)
-  const [profileSaving, setProfileSaving] = useState(false)
-  const [profileError, setProfileError] = useState('')
-  const [profileMessage, setProfileMessage] = useState('')
+  const { data: session, update } = useSession(); const { toast } = useToast()
+  const [activeTab, setActiveTab] = useState<SettingsTab>('profile'); const [schoolName, setSchoolName] = useState('Atlas Learning'); const [email, setEmail] = useState(''); const [name, setName] = useState(''); const [role, setRole] = useState('')
+  const [currentPassword, setCurrentPassword] = useState(''); const [newPassword, setNewPassword] = useState(''); const [confirmPassword, setConfirmPassword] = useState(''); const [passwordError, setPasswordError] = useState(''); const [passwordMessage, setPasswordMessage] = useState(''); const [savingPassword, setSavingPassword] = useState(false)
+  const [emailUpdates, setEmailUpdates] = useState(true); const [profileSaving, setProfileSaving] = useState(false); const [profileError, setProfileError] = useState(''); const [profileMessage, setProfileMessage] = useState(''); const [deletePassword, setDeletePassword] = useState(''); const [deleteConfirmation, setDeleteConfirmation] = useState(''); const [deleteError, setDeleteError] = useState(''); const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
-    fetch('/api/school').then((response) => response.json()).then((data) => setSchoolName(data.schoolName ?? 'Atlas Learning')).catch(() => setSchoolName('Atlas Learning'))
-    fetch('/api/account/profile').then((response) => response.ok ? response.json() : null).then((data) => { if (data?.user) { setName(data.user.name); setEmail(data.user.email); setRole(data.user.role) } }).catch(() => {})
-    setEmailUpdates(window.localStorage.getItem('atlas-email-updates') !== 'false')
-  }, [])
-
-  async function saveProfile(event: React.FormEvent) {
-    event.preventDefault(); setProfileError(''); setProfileMessage('')
-    setProfileSaving(true)
-    const response = await fetch('/api/account/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email }) })
-    const data = await response.json(); setProfileSaving(false)
-    if (!response.ok) { const message = data.error ?? 'Unable to update profile.'; setProfileError(message); toast(message, 'error'); return }
-    await update({ name: data.user.name, email: data.user.email })
-    setProfileMessage('Profile updated successfully.')
-    toast('Changes saved', 'success')
-  }
-
-  async function updatePassword(event: React.FormEvent) {
-    event.preventDefault(); setPasswordError(''); setPasswordMessage('')
-    if (newPassword !== confirmPassword) { setPasswordError('New passwords do not match.'); return }
-    setSavingPassword(true)
-    const response = await fetch('/api/account/password', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentPassword, newPassword }) })
-    const data = await response.json(); setSavingPassword(false)
-    if (!response.ok) { const message = data.error ?? 'Unable to update password.'; setPasswordError(message); toast(message, 'error'); return }
-    setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setPasswordMessage('Password updated successfully.'); toast('Password updated', 'success')
-  }
-
-  function savePreferences(value: boolean) {
-    setEmailUpdates(value); window.localStorage.setItem('atlas-email-updates', String(value)); toast('Preference saved', 'success')
-  }
-
-  return <AccountShell active="settings"><div className="page-wrap">
-    <div className="page-heading compact"><div><p className="eyebrow">Account</p><h1>Settings</h1><p className="muted">Manage your Atlas account, security and preferences.</p></div></div>
-    <div className="account-layout" style={{ display: 'grid', gridTemplateColumns: '1.1fr .9fr', gap: 18 }}>
-      <div>
-        <section className="panel" style={{ marginBottom: 18 }}><div className="panel-head"><div><p className="eyebrow">Profile</p><h2>Account details</h2></div><UserRound size={20} className="muted-icon" /></div><form onSubmit={saveProfile}><div className="account-fields" style={fieldGrid}><label style={labelStyle}>Full name<input value={name} onChange={(event) => setName(event.target.value)} required style={inputStyle} /></label><label style={labelStyle}>Email address<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required style={inputStyle} /></label><label style={labelStyle}>Role<input value={formatRole(role)} readOnly style={{ ...inputStyle, background: '#f7f8fb' }} /></label><label style={labelStyle}>School or workspace<input value={schoolName || 'Atlas Learning'} readOnly style={{ ...inputStyle, background: '#f7f8fb' }} /></label></div><p className="muted" style={{ fontSize: 11, marginTop: 14 }}>Your name and email can be updated here. Role and school are managed by Atlas or your school administrator.</p>{profileError && <p role="alert" style={{ color: '#b42318', fontSize: 12, margin: '12px 0 0' }}>{profileError}</p>}{profileMessage && <p role="status" style={{ color: 'var(--green)', fontSize: 12, margin: '12px 0 0' }}><CheckCircle2 size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{profileMessage}</p>}<button className="primary-button" type="submit" disabled={profileSaving} style={{ marginTop: 14 }}><Save size={16} />{profileSaving ? 'Saving...' : 'Save changes'}</button></form></section>
-        <section className="panel"><div className="panel-head"><div><p className="eyebrow">Security</p><h2>Change password</h2></div><LockKeyhole size={20} className="muted-icon" /></div><form onSubmit={updatePassword} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}><label style={labelStyle}>Current password<PasswordInput autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required style={inputStyle} /></label><div style={fieldGrid}><label style={labelStyle}>New password<PasswordInput autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required style={inputStyle} /></label><label style={labelStyle}>Confirm new password<PasswordInput autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required style={inputStyle} /></label></div><p className="muted" style={{ fontSize: 11 }}>Use at least 8 characters. You will stay signed in after updating your password.</p>{passwordError && <p role="alert" style={{ color: '#b42318', fontSize: 12, margin: 0 }}>{passwordError}</p>}{passwordMessage && <p role="status" style={{ color: 'var(--green)', fontSize: 12, margin: 0 }}><CheckCircle2 size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{passwordMessage}</p>}<button className="primary-button" type="submit" disabled={savingPassword}><Save size={16} />{savingPassword ? 'Updating...' : 'Update password'}</button></form></section>
-      </div>
-      <section className="panel" style={{ alignSelf: 'start' }}><div className="panel-head"><div><p className="eyebrow">Preferences</p><h2>Notifications</h2></div><ShieldCheck size={20} className="muted-icon" /></div><label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer' }}><input type="checkbox" checked={emailUpdates} onChange={(event) => savePreferences(event.target.checked)} style={{ marginTop: 3 }} /><span><strong>Email updates</strong><small style={{ display: 'block', color: 'var(--muted)', marginTop: 5, lineHeight: 1.5 }}>Receive important Atlas learning and account updates by email.</small></span></label><div style={{ borderTop: '1px solid var(--line)', marginTop: 20, paddingTop: 18 }}><p className="muted" style={{ fontSize: 12 }}>Security and invitation emails cannot be disabled.</p></div></section>
-    </div>
-  </div></AccountShell>
+  useEffect(() => { fetch('/api/school').then((r) => r.json()).then((d) => setSchoolName(d.schoolName ?? 'Atlas Learning')).catch(() => {}); fetch('/api/account/profile').then((r) => r.ok ? r.json() : null).then((d) => { if (d?.user) { setName(d.user.name); setEmail(d.user.email); setRole(d.user.role) } }).catch(() => {}); setEmailUpdates(window.localStorage.getItem('atlas-email-updates') !== 'false') }, [])
+  async function saveProfile(e: React.FormEvent) { e.preventDefault(); setProfileError(''); setProfileMessage(''); setProfileSaving(true); const r = await fetch('/api/account/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email }) }); const d = await r.json(); setProfileSaving(false); if (!r.ok) { setProfileError(d.error ?? 'Unable to update profile.'); toast(d.error ?? 'Unable to update profile.', 'error'); return }; await update({ name: d.user.name, email: d.user.email }); setProfileMessage('Profile updated successfully.'); toast('Changes saved', 'success') }
+  async function updatePassword(e: React.FormEvent) { e.preventDefault(); setPasswordError(''); setPasswordMessage(''); if (newPassword !== confirmPassword) { setPasswordError('New passwords do not match.'); return }; setSavingPassword(true); const r = await fetch('/api/account/password', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentPassword, newPassword }) }); const d = await r.json(); setSavingPassword(false); if (!r.ok) { setPasswordError(d.error ?? 'Unable to update password.'); toast(d.error ?? 'Unable to update password.', 'error'); return }; setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setPasswordMessage('Password updated successfully.'); toast('Password updated', 'success') }
+  function savePreferences(value: boolean) { setEmailUpdates(value); window.localStorage.setItem('atlas-email-updates', String(value)); toast('Notification preference saved', 'success') }
+  async function deleteAccount(e: React.FormEvent) { e.preventDefault(); setDeleteError(''); if (deleteConfirmation !== 'DELETE') { setDeleteError('Type DELETE exactly to confirm account deletion.'); return }; setDeleting(true); const r = await fetch('/api/account', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentPassword: deletePassword, confirmation: deleteConfirmation }) }); const d = await r.json(); setDeleting(false); if (!r.ok) { setDeleteError(d.error ?? 'Unable to delete your account.'); return }; await signOut({ callbackUrl: '/login?deleted=1' }) }
+  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [{ id: 'profile', label: 'Profile', icon: <UserRound size={17} /> }, { id: 'password', label: 'Password', icon: <KeyRound size={17} /> }, { id: 'notifications', label: 'Notifications', icon: <Bell size={17} /> }, { id: 'delete', label: 'Delete account', icon: <Trash2 size={17} /> }]
+  return <AccountShell active="settings"><div className="page-wrap settings-page"><div className="page-heading compact"><div><p className="eyebrow">Account</p><h1>Account settings</h1><p className="muted">Manage your profile, security and notification preferences.</p></div></div><div className="settings-frame"><aside className="settings-sidebar" aria-label="Account settings sections"><p className="settings-sidebar-title">Settings</p><nav>{tabs.map((tab) => <button key={tab.id} type="button" className={`settings-nav-item ${activeTab === tab.id ? 'active' : ''} ${tab.id === 'delete' ? 'danger' : ''}`} onClick={() => setActiveTab(tab.id)}>{tab.icon}<span>{tab.label}</span></button>)}</nav></aside><main className="settings-content">
+    {activeTab === 'profile' && <section><SectionHeading icon={<UserRound size={19} />} eyebrow="Profile" title="My profile" description="Keep your Atlas account information up to date." /><div className="settings-card profile-summary"><div className="profile-avatar">{(name || session?.user?.name || 'A').slice(0, 1).toUpperCase()}</div><div><strong>{name || 'Your name'}</strong><span>{formatRole(role)}</span><small>{schoolName}</small></div></div><div className="settings-card"><CardHeading title="Personal information" icon={<UserRound size={17} />} /><form onSubmit={saveProfile}><div className="settings-field-grid"><label style={labelStyle}>Full name<input value={name} onChange={(e) => setName(e.target.value)} required style={inputStyle} /></label><label style={labelStyle}>Email address<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} /></label></div><div className="settings-field-grid"><label style={labelStyle}>Role<input value={formatRole(role)} readOnly style={readOnlyInput} /></label><label style={labelStyle}>School or workspace<input value={schoolName} readOnly style={readOnlyInput} /></label></div><p className="settings-helper">Your role and workspace are managed by Atlas or your school administrator.</p>{profileError && <InlineMessage error>{profileError}</InlineMessage>}{profileMessage && <InlineMessage>{profileMessage}</InlineMessage>}<button className="primary-button" type="submit" disabled={profileSaving}><Save size={16} />{profileSaving ? 'Saving...' : 'Save profile'}</button></form></div></section>}
+    {activeTab === 'password' && <section><SectionHeading icon={<LockKeyhole size={19} />} eyebrow="Security" title="Password" description="Update the password you use to sign in to Atlas." /><div className="settings-card settings-form-card"><form onSubmit={updatePassword}><label style={labelStyle}>Current password<PasswordInput autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required style={inputStyle} /></label><label style={labelStyle}>New password<PasswordInput autoComplete="new-password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required style={inputStyle} /></label><label style={labelStyle}>Confirm new password<PasswordInput autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required style={inputStyle} /></label><p className="settings-helper">Use at least 8 characters. You will stay signed in after updating your password.</p>{passwordError && <InlineMessage error>{passwordError}</InlineMessage>}{passwordMessage && <InlineMessage>{passwordMessage}</InlineMessage>}<button className="primary-button" type="submit" disabled={savingPassword}><Save size={16} />{savingPassword ? 'Updating...' : 'Update password'}</button></form></div></section>}
+    {activeTab === 'notifications' && <section><SectionHeading icon={<Bell size={19} />} eyebrow="Preferences" title="Notifications" description="Choose which non-essential email updates you receive from Atlas." /><div className="settings-card"><CardHeading title="Email notifications" icon={<Bell size={17} />} /><label className="settings-toggle-row"><span><strong>Atlas updates</strong><small>Receive important learning, product and account updates by email.</small></span><input type="checkbox" checked={emailUpdates} onChange={(e) => savePreferences(e.target.checked)} /></label><p className="settings-helper settings-card-note">Security, invitation and password emails cannot be disabled.</p></div></section>}
+    {activeTab === 'delete' && <section><SectionHeading icon={<Trash2 size={19} />} eyebrow="Danger zone" title="Delete account" description="Permanently remove your Atlas account and associated access." /><div className="settings-card danger-card"><h2>Delete your account</h2><p>This action cannot be undone. Your sign-in access will be removed permanently. Historical learning records may be retained for school analytics.</p><form onSubmit={deleteAccount}><label style={labelStyle}>Current password<PasswordInput autoComplete="current-password" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} required style={inputStyle} /></label><label style={labelStyle}>Type DELETE to confirm<input value={deleteConfirmation} onChange={(e) => setDeleteConfirmation(e.target.value)} required placeholder="DELETE" style={inputStyle} /></label>{deleteError && <InlineMessage error>{deleteError}</InlineMessage>}<button className="danger-button" type="submit" disabled={deleting || deleteConfirmation !== 'DELETE'}><Trash2 size={16} />{deleting ? 'Deleting account...' : 'Delete account permanently'}</button></form></div></section>}
+  </main></div></div></AccountShell>
 }
-
-function formatRole(role: string) { return role === 'ATLAS_ADMIN' ? 'Atlas Admin' : role === 'INSTRUCTOR' ? 'Instructor' : role === 'HEADTEACHER' ? 'Headteacher' : role === 'TEACHER' ? 'Teacher' : 'Loading...' }
-const fieldGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }
-const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12, fontWeight: 600, color: '#374151' }
-const inputStyle: React.CSSProperties = { height: 42, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#00000', width: '100%' }
+function SectionHeading({ icon, eyebrow, title, description }: { icon: React.ReactNode; eyebrow: string; title: string; description: string }) { return <div className="settings-section-heading"><span className="settings-heading-icon">{icon}</span><div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2><p className="muted">{description}</p></div></div> }
+function CardHeading({ title, icon }: { title: string; icon: React.ReactNode }) { return <div className="settings-card-heading"><h3>{title}</h3><span>{icon}</span></div> }
+function InlineMessage({ children, error = false }: { children: React.ReactNode; error?: boolean }) { return <p role={error ? 'alert' : 'status'} className={`settings-message ${error ? 'error' : ''}`}>{!error && <CheckCircle2 size={14} />}{children}</p> }
+function formatRole(role: string) { return role === 'ATLAS_ADMIN' ? 'Atlas Admin' : role === 'ATLAS_EMPLOYEE' ? 'Atlas Employee' : role === 'INSTRUCTOR' ? 'Instructor' : role === 'HEADTEACHER' ? 'Headteacher' : role === 'TEACHER' ? 'Teacher' : 'Loading...' }
+const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600, color: '#374151' }
+const inputStyle: React.CSSProperties = { height: 42, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#fff', width: '100%' }
+const readOnlyInput: React.CSSProperties = { ...inputStyle, background: '#f7f8fb', color: 'var(--muted)' }

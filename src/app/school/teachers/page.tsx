@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckSquare, FileUp, MoreHorizontal, Search, Trash2, Users, Plus, X, RefreshCw, Ban } from 'lucide-react'
+import { CheckCircle2, CheckSquare, FileUp, MoreHorizontal, Search, Trash2, Users, Plus, X, RefreshCw, Ban } from 'lucide-react'
 import AuthShell from '@/components/AuthShell'
+import SetPasswordModal from '@/components/SetPasswordModal'
 import { useToast } from '@/components/Toast'
 
 interface TeacherWithInvitation {
@@ -56,6 +57,9 @@ export default function TeachersPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [deleting, setDeleting] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
+  const [acceptTarget, setAcceptTarget] = useState<{ id: string; name: string; email: string } | null>(null)
+  const [acceptBusy, setAcceptBusy] = useState(false)
+  const [acceptError, setAcceptError] = useState('')
 
   function loadData() {
     setLoading(true)
@@ -99,6 +103,18 @@ export default function TeachersPage() {
   async function handleRevoke(id: string) {
     const response = await fetch(`/api/invitations/${id}`, { method: 'DELETE' })
     toast(response.ok ? 'Invitation revoked' : 'Unable to revoke invitation', response.ok ? 'success' : 'error')
+    loadData()
+  }
+
+  async function acceptInvitation(inv: { id: string; name: string; email: string }, password: string) {
+    setAcceptError('')
+    setAcceptBusy(true)
+    const res = await fetch(`/api/invitations/${inv.id}/accept`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) })
+    setAcceptBusy(false)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { setAcceptError(data.error ?? 'Unable to accept invitation'); return }
+    setAcceptTarget(null)
+    toast('Invitation accepted and account created', 'success')
     loadData()
   }
 
@@ -168,6 +184,18 @@ export default function TeachersPage() {
         </button>
       </div>
 
+      {acceptTarget && <SetPasswordModal
+        title="Accept invitation & set password"
+        subject={acceptTarget.name}
+        subjectLabel={acceptTarget.email}
+        description="Create this teacher's account now by choosing the password they will sign in with."
+        confirmLabel="Create account & set password"
+        busy={acceptBusy}
+        error={acceptError}
+        onConfirm={(password) => acceptInvitation(acceptTarget, password)}
+        onClose={() => { setAcceptTarget(null); setAcceptError('') }}
+      />}
+
       {showInvite && (
         <div className="panel" style={{ marginBottom: 24, maxWidth: 500 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -232,12 +260,16 @@ export default function TeachersPage() {
                       <td>
                         {isInvitation && m.invitationStatus !== 'EXPIRED' && (
                           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <button className="text-button" onClick={() => setAcceptTarget({ id: m.id, name: m.name, email: m.email })} title="Accept invitation & set password" style={{ color: '#047857' }}><CheckCircle2 size={14} /></button>
                             <button className="text-button" onClick={() => handleResend(m.id)} title="Resend invitation"><RefreshCw size={14} /></button>
                             <button className="text-button" onClick={() => handleRevoke(m.id)} title="Revoke invitation" style={{ color: '#e53e3e' }}><Ban size={14} /></button>
                           </div>
                         )}
                         {isInvitation && m.invitationStatus === 'EXPIRED' && (
-                          <button className="text-button" onClick={() => handleResend(m.id)}>Resend</button>
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <button className="text-button" onClick={() => setAcceptTarget({ id: m.id, name: m.name, email: m.email })} title="Accept invitation & set password" style={{ color: '#047857' }}><CheckCircle2 size={14} /></button>
+                            <button className="text-button" onClick={() => handleResend(m.id)}>Resend</button>
+                          </div>
                         )}
                         {!isInvitation && !protectedRow && (
                           <button className="text-button" onClick={() => deleteMember(m)} title="Delete" style={{ ...iconButtonStyle, color: '#e53e3e' }}><Trash2 size={14} /></button>

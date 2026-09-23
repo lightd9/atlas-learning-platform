@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Mail, UsersRound, RefreshCw, Ban } from 'lucide-react'
+import { Mail, UsersRound, RefreshCw, Ban, CheckCircle2 } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import SetupLinkCard from '@/components/SetupLinkCard'
+import SetPasswordModal from '@/components/SetPasswordModal'
 import { useToast } from '@/components/Toast'
 
 interface AdminInvitation {
@@ -28,6 +29,9 @@ export default function AdminInvitationsPage() {
   const [loading, setLoading] = useState(true)
   const [resendLink, setResendLink] = useState<{ invitationId?: string; url: string; expiresAt?: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [acceptTarget, setAcceptTarget] = useState<AdminInvitation | null>(null)
+  const [acceptBusy, setAcceptBusy] = useState(false)
+  const [acceptError, setAcceptError] = useState('')
 
   async function load() {
     const res = await fetch('/api/admin/invitations')
@@ -64,9 +68,22 @@ export default function AdminInvitationsPage() {
     } else toast('Unable to revoke invitation', 'error')
   }
 
+  async function acceptInvitation(inv: AdminInvitation, password: string) {
+    setAcceptError('')
+    setAcceptBusy(true)
+    const res = await fetch(`/api/invitations/${inv.id}/accept`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { setAcceptBusy(false); setAcceptError(data.error ?? 'Unable to accept invitation'); return }
+    setAcceptBusy(false)
+    setAcceptTarget(null)
+    setInvitations(invitations.filter((item) => item.id !== inv.id))
+    toast('Invitation accepted and account created', 'success')
+  }
+
   function handleInvitationAction(inv: AdminInvitation, action: string) {
     if (action === 'resend') resendInvitation(inv)
     if (action === 'revoke') revokeInvitation(inv)
+    if (action === 'accept') setAcceptTarget(inv)
   }
 
   return <AdminShell active="users">
@@ -80,6 +97,17 @@ export default function AdminInvitationsPage() {
       </div>
 
       <div className="panel" style={{ overflow: 'hidden', padding: 0 }}>
+        {acceptTarget && <SetPasswordModal
+          title="Accept invitation & set password"
+          subject={acceptTarget.name}
+          subjectLabel={acceptTarget.email}
+          description="Create this user's account now by choosing the password they will sign in with."
+          confirmLabel="Create account & set password"
+          busy={acceptBusy}
+          error={acceptError}
+          onConfirm={(password) => acceptInvitation(acceptTarget, password)}
+          onClose={() => { setAcceptTarget(null); setAcceptError('') }}
+        />}
         {resendLink && <div style={{ padding: 12, borderBottom: '1px solid var(--line)' }}><SetupLinkCard label="New setup link sent" setupUrl={resendLink.url} invitationId={resendLink.invitationId} expiresAt={resendLink.expiresAt} /></div>}
         {loading ? <p style={{ padding: 16, margin: 0 }}>Loading...</p> : invitations.length === 0 ? (
           <div style={{ padding: 32, textAlign: 'center' }}>
@@ -114,6 +142,7 @@ export default function AdminInvitationsPage() {
                     <td>{inv.status === 'REVOKED' ? '—' : new Date(inv.expiresAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
                     <td>
                       <span style={{ display: 'inline-flex', gap: 5 }} aria-label={`Actions for invitation to ${inv.name}`}>
+                        <button className="icon-button" title="Accept & set password" aria-label={`Accept invitation and set password for ${inv.name}`} onClick={() => handleInvitationAction(inv, 'accept')}><CheckCircle2 size={16} style={{ color: '#047857' }} /></button>
                         <button className="icon-button" title="Resend invitation" aria-label={`Resend invitation to ${inv.name}`} onClick={() => handleInvitationAction(inv, 'resend')}><RefreshCw size={16} /></button>
                         {inv.status !== 'REVOKED' && <button className="icon-button" title="Revoke invitation" aria-label={`Revoke invitation for ${inv.name}`} onClick={() => handleInvitationAction(inv, 'revoke')}><Ban size={16} style={{ color: '#b42318' }} /></button>}
                       </span>
