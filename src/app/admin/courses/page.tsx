@@ -9,7 +9,7 @@ import AppModal from '@/components/AppModal'
 import { useToast } from '@/components/Toast'
 import DurationInput from '@/components/DurationInput'
 import { courseTotalSeconds, formatClock } from '@/lib/format'
-import type { AdminCourse, ApiCourseSection } from '@/types/api'
+import type { AdminCourse } from '@/types/api'
 
 export default function AdminCoursesPage() {
   const { data: session, status } = useSession()
@@ -20,7 +20,6 @@ export default function AdminCoursesPage() {
   const canAssignSchools = isAtlasAdmin || (session?.user?.role === 'ATLAS_EMPLOYEE' && employeePermissions.includes('SCHOOL_ASSIGN'))
   const canDeleteCourses = isAtlasAdmin || (session?.user?.role === 'ATLAS_EMPLOYEE' && employeePermissions.includes('COURSE_DELETE'))
   const [courses, setCourses] = useState<AdminCourse[]>([])
-  const [sections, setSections] = useState<ApiCourseSection[]>([])
   const [schools, setSchools] = useState<{ id: string; name: string; active?: boolean }[]>([])
   const [availabilityMode, setAvailabilityMode] = useState<'ALL' | 'SELECTED'>('ALL')
   const [selectedSchoolIds, setSelectedSchoolIds] = useState<string[]>([])
@@ -32,13 +31,12 @@ export default function AdminCoursesPage() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [sectionFilter, setSectionFilter] = useState('')
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
     if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN' && session?.user?.role !== 'ATLAS_EMPLOYEE' && session?.user?.role !== 'INSTRUCTOR') { router.push('/dashboard'); return }
     if (status === 'authenticated') {
-      Promise.all([fetch('/api/admin/courses').then((r) => r.json()), isAtlasAdmin ? fetch('/api/admin/course-sections').then((r) => r.json()) : Promise.resolve({ sections: [] }), canAssignSchools ? fetch('/api/admin/schools').then((r) => r.json()) : Promise.resolve({ schools: [] })]).then(([courseData, sectionData, schoolData]) => { const activeSchools = (schoolData.schools ?? []).filter((school: { active?: boolean }) => school.active !== false); setCourses(courseData.courses ?? []); setSections(sectionData.sections ?? []); setSchools(activeSchools); setSelectedSchoolIds(activeSchools.map((school: { id: string }) => school.id)); setLoading(false) }).catch(() => setLoading(false))
+      Promise.all([fetch('/api/admin/courses').then((r) => r.json()), canAssignSchools ? fetch('/api/admin/schools').then((r) => r.json()) : Promise.resolve({ schools: [] })]).then(([courseData, schoolData]) => { const activeSchools = (schoolData.schools ?? []).filter((school: { active?: boolean }) => school.active !== false); setCourses(courseData.courses ?? []); setSchools(activeSchools); setSelectedSchoolIds(activeSchools.map((school: { id: string }) => school.id)); setLoading(false) }).catch(() => setLoading(false))
     }
   }, [status, session, router, isAtlasAdmin, canAssignSchools])
 
@@ -110,8 +108,7 @@ export default function AdminCoursesPage() {
   const filtered = courses.filter((c) => {
     const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase()) || c.slug.toLowerCase().includes(search.toLowerCase()) || Boolean(c.section?.name.toLowerCase().includes(search.toLowerCase()))
     const matchesStatus = !statusFilter || c.status === statusFilter
-    const matchesSection = !sectionFilter || c.sectionId === sectionFilter
-    return matchesSearch && matchesStatus && matchesSection
+    return matchesSearch && matchesStatus
   })
 
   const createDirty =
@@ -215,7 +212,6 @@ export default function AdminCoursesPage() {
         <Search size={17} />
         <input placeholder="Search courses..." value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search courses" />
       </div>
-      <select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} style={selectStyle}><option value="">All sections</option>{sections.map((section) => <option key={section.id} value={section.id}>{section.name}</option>)}</select>
       <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={selectStyle}><option value="">All statuses</option><option value="PUBLISHED">Published</option><option value="REVIEW">Ready for review</option><option value="DRAFT">Draft</option><option value="ARCHIVED">Archived</option></select>
       </div>
 

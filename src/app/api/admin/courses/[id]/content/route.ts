@@ -59,8 +59,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const incomingModuleIds = body.data.modules.flatMap((module) => module.id ? [module.id] : [])
     const incomingLessonIds = body.data.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.id ? [lesson.id] : []))
     await prisma.$transaction(async (tx) => {
-      await tx.lesson.updateMany({ where: { moduleId: { in: existing.modules.map((module) => module.id) }, id: { notIn: incomingLessonIds } }, data: { archived: true, published: false } })
-      await tx.courseModule.updateMany({ where: { courseId, id: { notIn: incomingModuleIds } }, data: { archived: true } })
+      await tx.lesson.deleteMany({ where: { moduleId: { in: existing.modules.map((module) => module.id) }, id: { notIn: incomingLessonIds } } })
+      await tx.courseModule.deleteMany({ where: { courseId, id: { notIn: incomingModuleIds } } })
       for (const module of body.data.modules) {
         const savedModule = module.id
           ? await tx.courseModule.update({ where: { id: module.id, courseId }, data: { title: module.title, description: module.description || null, sortOrder: module.sortOrder, archived: false } })

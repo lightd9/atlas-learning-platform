@@ -53,29 +53,25 @@ export async function GET(request: Request) {
           : 0
 
         const isActive = u.status === 'ACTIVE'
-        const hasProgress = u.progress.some((p) => p.status === 'IN_PROGRESS' || p.status === 'COMPLETED')
-        const lastActive = u.lastActiveAt
-        const recentActivity = u.progress.some((p) => {
-          if (!p.lastWatchedAt) return false
-          const diff = Date.now() - new Date(p.lastWatchedAt).getTime()
-          return diff < 24 * 60 * 60 * 1000
-        })
+        const lastActiveMs = u.lastActiveAt ? new Date(u.lastActiveAt).getTime() : 0
+        const lastWatchMs = u.progress.reduce((max, p) => {
+          if (!p.lastWatchedAt) return max
+          return Math.max(max, new Date(p.lastWatchedAt).getTime())
+        }, 0)
+        const mostRecentMs = Math.max(lastActiveMs, lastWatchMs)
 
         let statusLabel = 'Pending'
         let lastActiveLabel = '—'
-        if (isActive && hasProgress) {
+        if (isActive) {
           statusLabel = 'Active'
-          if (recentActivity) lastActiveLabel = 'Today'
-          else if (lastActive) {
-            const diff = Date.now() - new Date(lastActive).getTime()
-            const days = Math.floor(diff / (24 * 60 * 60 * 1000))
-            if (days <= 1) lastActiveLabel = 'Yesterday'
+          if (mostRecentMs > 0) {
+            const diffMs = Date.now() - mostRecentMs
+            const days = Math.floor(diffMs / (24 * 60 * 60 * 1000))
+            if (days <= 0) lastActiveLabel = 'Today'
+            else if (days === 1) lastActiveLabel = 'Yesterday'
             else if (days < 7) lastActiveLabel = `${days} days ago`
-            else lastActiveLabel = new Date(lastActive).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+            else lastActiveLabel = new Date(mostRecentMs).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
           }
-        } else if (isActive) {
-          statusLabel = 'Active'
-          lastActiveLabel = lastActive ? new Date(lastActive).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'
         }
 
         const initials = u.name.split(' ').map((n) => n[0]).join('')

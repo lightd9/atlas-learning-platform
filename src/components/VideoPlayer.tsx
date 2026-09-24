@@ -28,8 +28,42 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
   const watchedRangesRef = useRef<{ start: number; end: number }[]>([])
   const seekingRef = useRef(false)
   const onProgressRef = useRef(onProgress)
+  const hideControlsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => { onProgressRef.current = onProgress }, [onProgress])
+
+  const [controlsShown, setControlsShown] = useState(true)
+
+  const revealControls = useCallback(() => {
+    setControlsShown(true)
+    if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current)
+    hideControlsTimerRef.current = setTimeout(() => {
+      const video = videoRef.current
+      if (video && !video.paused) setControlsShown(false)
+    }, 2000)
+  }, [])
+
+  useEffect(() => {
+    if (!fullscreen) { setControlsShown(true); return }
+    revealControls()
+    return () => {
+      if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current)
+    }
+  }, [fullscreen, revealControls])
+
+  useEffect(() => {
+    if (!playing) setControlsShown(true)
+  }, [playing])
+
+  // Keep the `fullscreen` state in sync when the user exits with the Escape
+  // key, so the overlay hide logic does not stay locked to fullscreen.
+  useEffect(() => {
+    function onFullscreenChange() {
+      setFullscreen(Boolean(document.fullscreenElement))
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -283,8 +317,10 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
 
   if (!src) return null
 
+  const controlsVisible = !fullscreen || controlsShown
+
   return (
-    <div className="video-stage" tabIndex={0} role="region" aria-label="Video player" onKeyDown={handlePlayerKeyDown} style={{ position: 'relative', overflow: 'hidden', background: '#000' }}>
+    <div className="video-stage" tabIndex={0} role="region" aria-label="Video player" onKeyDown={handlePlayerKeyDown} onMouseMove={() => { if (fullscreen && !controlsShown) revealControls() }} style={{ position: 'relative', overflow: 'hidden', background: '#000', cursor: fullscreen && !controlsShown ? 'none' : 'default' }}>
       <video
         ref={videoRef}
         onTimeUpdate={handleTimeUpdate}
@@ -302,6 +338,9 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
         display: 'block',
         background: 'linear-gradient(transparent, rgba(0,0,0,0.88))',
         padding: '44px 20px 18px', color: '#fff',
+        opacity: controlsVisible ? 1 : 0,
+        pointerEvents: controlsVisible ? 'auto' : 'none',
+        transition: 'opacity .25s ease',
       }}>
         <label htmlFor={`video-seek-${lessonId ?? courseId}`} style={{ display: 'block', color: '#fff', fontSize: 11, marginBottom: 9 }}>
           <span className="sr-only">Seek video</span>

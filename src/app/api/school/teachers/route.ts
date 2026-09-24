@@ -11,7 +11,7 @@ export async function GET() {
       where: { schoolId: manager.schoolId },
       include: {
         progress: {
-          select: { percentComplete: true },
+          select: { percentComplete: true, lastWatchedAt: true },
         },
       },
       orderBy: { createdAt: 'asc' },
@@ -23,13 +23,20 @@ export async function GET() {
         ? Math.round(progressValues.reduce((a, b) => a + b, 0) / progressValues.length)
         : 0
 
+      const lastActiveMs = u.lastActiveAt ? new Date(u.lastActiveAt).getTime() : 0
+      const lastWatchMs = u.progress.reduce((max, p) => {
+        if (!p.lastWatchedAt) return max
+        return Math.max(max, new Date(p.lastWatchedAt).getTime())
+      }, 0)
+      const mostRecentMs = Math.max(lastActiveMs, lastWatchMs)
+
       return {
         id: u.id,
         name: u.name,
         email: u.email,
         role: u.role,
         status: u.status,
-        lastActiveAt: u.lastActiveAt?.toISOString() ?? null,
+        lastActiveAt: mostRecentMs > 0 ? new Date(mostRecentMs).toISOString() : null,
         averageProgress: avg,
       }
     })

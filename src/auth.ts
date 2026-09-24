@@ -66,8 +66,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.email = session.user.email ?? token.email
       }
       if (token.sub) {
-        const current = await prisma.user.findUnique({ where: { id: token.sub }, select: { mustChangePassword: true } })
+        const current = await prisma.user.findUnique({ where: { id: token.sub }, select: { mustChangePassword: true, lastActiveAt: true } })
         token.mustChangePassword = current?.mustChangePassword ?? false
+        const lastActiveMs = current?.lastActiveAt?.getTime() ?? 0
+        if (current && Date.now() - lastActiveMs >= 10 * 60 * 1000) {
+          await prisma.user.update({
+            where: { id: token.sub },
+            data: { lastActiveAt: new Date() },
+          }).catch(() => {})
+        }
       }
       return token
     },
