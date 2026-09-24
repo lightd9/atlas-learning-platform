@@ -29,6 +29,7 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
   const seekingRef = useRef(false)
   const onProgressRef = useRef(onProgress)
   const hideControlsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const overControlsRef = useRef(false)
 
   useEffect(() => { onProgressRef.current = onProgress }, [onProgress])
 
@@ -39,21 +40,22 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
     if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current)
     hideControlsTimerRef.current = setTimeout(() => {
       const video = videoRef.current
-      if (video && !video.paused) setControlsShown(false)
+      if (video && !video.paused && !overControlsRef.current) setControlsShown(false)
     }, 2000)
   }, [])
 
   useEffect(() => {
-    if (!fullscreen) { setControlsShown(true); return }
-    revealControls()
-    return () => {
+    if (!playing) {
+      setControlsShown(true)
       if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current)
+      return
     }
-  }, [fullscreen, revealControls])
+    revealControls()
+  }, [playing, revealControls])
 
   useEffect(() => {
-    if (!playing) setControlsShown(true)
-  }, [playing])
+    if (fullscreen) revealControls()
+  }, [fullscreen, revealControls])
 
   // Keep the `fullscreen` state in sync when the user exits with the Escape
   // key, so the overlay hide logic does not stay locked to fullscreen.
@@ -317,10 +319,10 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
 
   if (!src) return null
 
-  const controlsVisible = !fullscreen || controlsShown
+  const controlsVisible = controlsShown
 
   return (
-    <div className="video-stage" tabIndex={0} role="region" aria-label="Video player" onKeyDown={handlePlayerKeyDown} onMouseMove={() => { if (fullscreen && !controlsShown) revealControls() }} style={{ position: 'relative', overflow: 'hidden', background: '#000', cursor: fullscreen && !controlsShown ? 'none' : 'default' }}>
+    <div className="video-stage" tabIndex={0} role="region" aria-label="Video player" onKeyDown={handlePlayerKeyDown} onMouseMove={() => { if (!controlsShown) revealControls() }} style={{ position: 'relative', overflow: 'hidden', background: '#000', cursor: fullscreen && !controlsShown ? 'none' : 'default' }}>
       <video
         ref={videoRef}
         onTimeUpdate={handleTimeUpdate}
@@ -333,7 +335,7 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
         playsInline
       />
-      <div className="video-controls" style={{
+      <div className="video-controls" onMouseEnter={() => { overControlsRef.current = true; if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current) }} onMouseLeave={() => { overControlsRef.current = false; revealControls() }} style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         display: 'block',
         background: 'linear-gradient(transparent, rgba(0,0,0,0.88))',
