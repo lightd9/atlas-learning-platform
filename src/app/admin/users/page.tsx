@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Users, Search, Plus, Mail, Power, ShieldCheck, Trash2, KeyRound, UserPlus } from 'lucide-react'
+import { Users, Search, Plus, Mail, Power, ShieldCheck, Trash2, UserPlus } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import AppModal from '@/components/AppModal'
 import SetupLinkCard from '@/components/SetupLinkCard'
@@ -247,7 +247,7 @@ export default function AdminUsersPage() {
                       <span style={{ display: 'inline-flex', gap: 5 }} aria-label={`Actions for ${user.name}`}>
                         {canManageUsers && <button className="icon-button" title={user.status === 'DISABLED' ? 'Enable user' : 'Disable user'} aria-label={`${user.status === 'DISABLED' ? 'Enable' : 'Disable'} ${user.name}`} onClick={() => toggleUser(user)}><Power size={16} /></button>}
                         {canManageUsers && user.role === 'ATLAS_EMPLOYEE' && <button className="icon-button" title="Edit permissions" aria-label={`Edit permissions for ${user.name}`} onClick={() => { setEditingPermissions(user); setPermissionDraft(user.permissions ?? []) }}><ShieldCheck size={16} /></button>}
-                        {canResetPasswords && <button className="icon-button" title="Reset password" aria-label={`Reset password for ${user.name}`} onClick={() => resetPassword(user)}><KeyRound size={16} /></button>}
+                        {canResetPasswords && <button className="icon-button" title="Reset password" aria-label={`Reset password for ${user.name}`} onClick={() => resetPassword(user)}></button>}
                         {canDeleteUsers && <button className="icon-button" title="Delete user" aria-label={`Delete ${user.name}`} onClick={() => deleteUser(user)}><Trash2 size={16} style={{ color: '#b42318' }} /></button>}
                       </span>
                     )}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, KeyRound } from 'lucide-react'
+import { X } from 'lucide-react'
 import PasswordInput from '@/components/PasswordInput'
 
 interface SetPasswordModalProps {
@@ -58,7 +58,7 @@ export default function SetPasswordModal({
           </label>
           {(localError || error) && <p role="alert" style={{ color: '#b42318', fontSize: 12, margin: 0 }}>{localError || error}</p>}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button className="primary-button" type="submit" disabled={busy}><KeyRound size={16} />{busy ? 'Saving...' : confirmLabel}</button>
+            <button className="primary-button" type="submit" disabled={busy}>{busy ? 'Saving...' : confirmLabel}</button>
           </div>
         </form>
       </div>
