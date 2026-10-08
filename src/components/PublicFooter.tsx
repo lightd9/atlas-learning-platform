@@ -38,7 +38,7 @@ export default function PublicFooter() {
       </div>
       <div className="atlas-footer-bottom">
         <span>© 2026 Atlas Support. All rights reserved.</span>
-        <a href="mailto:sales@layer21.com" className="atlas-footer-layer21">Powered by Layer21</a>
+        <a href="mailto:fenwa.hassan@layer21.com" className="atlas-footer-layer21">Powered by Layer21</a>
         <span className="atlas-footer-legal">
           <Link href="/privacy">Privacy Policy</Link>
           <Link href="/terms">Terms and Conditions</Link>
