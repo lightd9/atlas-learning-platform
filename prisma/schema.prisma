@@ -13,6 +13,12 @@ enum UserRole {
   INSTRUCTOR
   HEADTEACHER
   TEACHER
+  PARENT
+}
+
+enum CourseAudience {
+  STAFF
+  PARENT
 }
 
 enum UserStatus {
@@ -58,16 +64,19 @@ enum HomePageSection {
 }
 
 model School {
-  id              String           @id @default(cuid())
-  name            String
-  slug            String           @unique
-  active          Boolean          @default(true)
-  users           User[]
-  courseAccess    SchoolCourse[]
-  invitations     Invitation[]
-  auditLogs       AuditLog[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id                              String           @id @default(cuid())
+  name                            String
+  slug                            String           @unique
+  active                          Boolean          @default(true)
+  parentRegistrationToken         String?          @unique
+  parentRegistrationEnabled       Boolean          @default(true)
+  parentRegistrationTokenCreatedAt DateTime?
+  users                           User[]
+  courseAccess                    SchoolCourse[]
+  invitations                     Invitation[]
+  auditLogs                       AuditLog[]
+  createdAt                       DateTime         @default(now())
+  updatedAt                       DateTime         @updatedAt
 }
 
 model User {
@@ -139,6 +148,7 @@ model Course {
   muxPlaybackId   String?
   published       Boolean          @default(true)
   status          CourseStatus     @default(DRAFT)
+  audience        CourseAudience   @default(STAFF)
   sectionId       String?
   section         CourseSection?   @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   createdById     String?

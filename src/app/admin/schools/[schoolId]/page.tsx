@@ -3,20 +3,21 @@
 import { use, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Ban, Building2, CheckCircle2, CheckSquare, FileUp, Mail, Pencil, Plus, RefreshCw, School as SchoolIcon, Trash2, UserPlus, Users } from 'lucide-react'
+import { ArrowLeft, Ban, Building2, CheckCircle2, CheckSquare, FileUp, HeartHandshake, KeyRound, Mail, Pencil, Plus, RefreshCw, School as SchoolIcon, Trash2, UserPlus, Users } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import AppModal from '@/components/AppModal'
 import SetPasswordModal from '@/components/SetPasswordModal'
 import { useToast } from '@/components/Toast'
 
 type SchoolData = {
-  id: string; name: string; slug: string; active: boolean; userCount: number; courseCount: number
+  id: string; name: string; slug: string; active: boolean; userCount: number; parentCount: number; courseCount: number
+  parentRegistration?: { enabled: boolean; token: string | null }
   users: { id: string; name: string; email: string; role: string; status: string; lastActiveAt: string | null }[]
   invitations: { id: string; name: string; email: string; status: string; expiresAt: string }[]
-  courseAccess: { schoolId: string; courseId: string; enabled: boolean; course: { id: string; title: string; published: boolean } }[]
+  courseAccess: { schoolId: string; courseId: string; enabled: boolean; course: { id: string; title: string; published: boolean; audience?: string } }[]
 }
 
-type Course = { id: string; title: string; published: boolean }
+type Course = { id: string; title: string; published: boolean; audience?: string }
 type HeadteacherOption = { id: string; name: string; email: string; role: string; status: string }
 
 export default function AdminSchoolDetailPage({ params }: { params: Promise<{ schoolId: string }> }) {
@@ -58,7 +59,9 @@ export default function AdminSchoolDetailPage({ params }: { params: Promise<{ sc
     setHeadteachers((schoolData.school?.users ?? []).filter((user: HeadteacherOption) => ['TEACHER', 'HEADTEACHER'].includes(user.role) && user.status !== 'DISABLED'))
     const currentHeadteacher = (schoolData.school?.users ?? []).find((user: SchoolData['users'][number]) => user.role === 'HEADTEACHER')
     setProfileForm({ name: schoolData.school?.name ?? '', slug: schoolData.school?.slug ?? '', headteacherId: currentHeadteacher?.id ?? '' })
-    const availableCourses: Course[] = (courseData.courses ?? []).map((course: Course) => ({ id: course.id, title: course.title, published: course.published }))
+    const availableCourses: Course[] = (courseData.courses ?? [])
+      .filter((course: Course) => (course.audience ?? 'STAFF') === 'STAFF')
+      .map((course: Course) => ({ id: course.id, title: course.title, published: course.published, audience: course.audience ?? 'STAFF' }))
     setCourses(availableCourses)
     const accessByCourse = new Map((schoolData.school?.courseAccess ?? []).map((access: SchoolData['courseAccess'][number]) => [access.courseId, access.enabled]))
     const savedIds = availableCourses.filter((course) => accessByCourse.get(course.id) ?? true).map((course) => course.id)
@@ -131,7 +134,7 @@ export default function AdminSchoolDetailPage({ params }: { params: Promise<{ sc
 
   async function saveCourseSelection() {
     setCourseSaving(true); setMessage('')
-    const response = await fetch('/api/admin/school-access', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ schoolId, courseIds: selectedCourseIds }) })
+    const response = await fetch('/api/admin/school-access', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ schoolId, courseIds: selectedCourseIds, audience: 'STAFF' }) })
     const data = await response.json()
     setCourseSaving(false)
     if (!response.ok) { const message = data.error ?? 'Unable to save course access.'; setMessage(message); toast(message, 'error'); return }
@@ -167,7 +170,7 @@ export default function AdminSchoolDetailPage({ params }: { params: Promise<{ sc
       <button className="text-button" onClick={() => router.push('/admin/schools')} style={{ marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 6 }}><ArrowLeft size={16} /> Back to schools</button>
       <div className="page-heading compact">
         <div><p className="eyebrow">School management</p><h1>{school.name}</h1><p className="muted">{school.slug} · <span className={`badge ${school.active ? 'badge-active' : 'badge-inactive'}`}>{school.active ? 'Active' : 'Disabled'}</span></p></div>
-        <div className="school-profile-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button className="secondary-button" onClick={() => setEditingProfile(true)}><Pencil size={16} /> Edit profile</button><button className="secondary-button" style={school.active ? { color: '#b42318', borderColor: '#fecdca', background: '#fff' } : undefined} onClick={async () => { const response = await fetch(`/api/admin/schools/${schoolId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !school.active }) }); toast(response.ok ? (school.active ? 'School disabled' : 'School enabled') : 'Unable to update school status', response.ok ? 'success' : 'error'); if (response.ok) load() }}>{school.active ? 'Disable school' : 'Enable school'}</button></div>
+        <div className="school-profile-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button className="secondary-button" onClick={() => router.push(`/admin/schools/${schoolId}/parents`)}><HeartHandshake size={16} /> Parents</button><button className="secondary-button" onClick={() => setEditingProfile(true)}><Pencil size={16} /> Edit profile</button><button className="secondary-button" style={school.active ? { color: '#b42318', borderColor: '#fecdca', background: '#fff' } : undefined} onClick={async () => { const response = await fetch(`/api/admin/schools/${schoolId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !school.active }) }); toast(response.ok ? (school.active ? 'School disabled' : 'School enabled') : 'Unable to update school status', response.ok ? 'success' : 'error'); if (response.ok) load() }}>{school.active ? 'Disable school' : 'Enable school'}</button></div>
       </div>
       {message && <p role="status" style={{ color: 'var(--green)', fontSize: 13 }}>{message}</p>}
       {resetTarget && <SetPasswordModal
@@ -219,9 +222,10 @@ export default function AdminSchoolDetailPage({ params }: { params: Promise<{ sc
         </AppModal>
       )}
 
-      <div className="metric-grid school-profile-metrics" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 24 }}>
+      <div className="metric-grid school-profile-metrics" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 24 }}>
         <div className="metric-card"><Building2 size={18} /><span>School status</span><strong>{school.active ? 'Active' : 'Disabled'}</strong></div>
         <div className="metric-card"><Users size={18} /><span>Team members</span><strong>{school.userCount}</strong></div>
+        <div className="metric-card"><HeartHandshake size={18} /><span>Parents</span><strong>{school.parentCount}</strong></div>
         <div className="metric-card"><Mail size={18} /><span>Assigned courses</span><strong>{school.courseCount}</strong></div>
       </div>
 
@@ -251,7 +255,7 @@ export default function AdminSchoolDetailPage({ params }: { params: Promise<{ sc
             </form>
           </AppModal>
         )}
-        <div className="table-wrap"><table className="admin-table"><thead><tr>{teamSelectMode && <th style={{ width: 36 }}><input type="checkbox" checked={selectedUserIds.length === school.users.filter((u) => u.id !== session?.user?.id).length && school.users.length > 0} onChange={(e) => setSelectedUserIds(e.target.checked ? school.users.filter((u) => u.id !== session?.user?.id).map((u) => u.id) : [])} aria-label="Select all team members" /></th>}<th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last active</th><th /></tr></thead><tbody>{school.users.map((user) => <tr key={user.id}>{teamSelectMode && <td>{user.id === session?.user?.id ? null : <input type="checkbox" checked={selectedUserIds.includes(user.id)} onChange={(e) => setSelectedUserIds(e.target.checked ? [...selectedUserIds, user.id] : selectedUserIds.filter((id) => id !== user.id))} aria-label={`Select ${user.name}`} />}</td>}<td><strong>{user.name}</strong></td><td>{user.email}</td><td>{user.role === 'HEADTEACHER' ? 'Headteacher' : user.role === 'INSTRUCTOR' ? 'Instructor' : user.role === 'ATLAS_ADMIN' ? 'Atlas Admin' : 'Teacher'}</td><td><span className={`badge ${user.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}`}>{user.status}</span></td><td>{user.lastActiveAt ? new Date(user.lastActiveAt).toLocaleDateString('en-GB') : '—'}</td><td>{user.id === session?.user?.id ? <span className="muted" style={{ fontSize: 12 }}>You</span> : <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>{session?.user?.role === 'ATLAS_ADMIN' && user.role === 'TEACHER' && <button className="text-button" onClick={() => resetTeacherPassword(user)} style={iconButtonStyle} title={`Reset password for ${user.name}`}></button>}<button className="text-button" onClick={() => deleteMembers([user.id], [])} style={{ ...iconButtonStyle, color: '#b42318' }} title={`Delete ${user.name}`}><Trash2 size={14} /></button></span>}</td></tr>)}</tbody></table></div>
+        <div className="table-wrap"><table className="admin-table"><thead><tr>{teamSelectMode && <th style={{ width: 36 }}><input type="checkbox" checked={selectedUserIds.length === school.users.filter((u) => u.id !== session?.user?.id).length && school.users.length > 0} onChange={(e) => setSelectedUserIds(e.target.checked ? school.users.filter((u) => u.id !== session?.user?.id).map((u) => u.id) : [])} aria-label="Select all team members" /></th>}<th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last active</th><th /></tr></thead><tbody>{school.users.map((user) => <tr key={user.id}>{teamSelectMode && <td>{user.id === session?.user?.id ? null : <input type="checkbox" checked={selectedUserIds.includes(user.id)} onChange={(e) => setSelectedUserIds(e.target.checked ? [...selectedUserIds, user.id] : selectedUserIds.filter((id) => id !== user.id))} aria-label={`Select ${user.name}`} />}</td>}<td><strong>{user.name}</strong></td><td>{user.email}</td><td>{user.role === 'HEADTEACHER' ? 'Headteacher' : user.role === 'INSTRUCTOR' ? 'Instructor' : user.role === 'ATLAS_ADMIN' ? 'Atlas Admin' : 'Teacher'}</td><td><span className={`badge ${user.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}`}>{user.status}</span></td><td>{user.lastActiveAt ? new Date(user.lastActiveAt).toLocaleDateString('en-GB') : '—'}</td><td>{user.id === session?.user?.id ? <span className="muted" style={{ fontSize: 12 }}>You</span> : <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>{session?.user?.role === 'ATLAS_ADMIN' && user.role === 'TEACHER' && <button className="text-button" onClick={() => resetTeacherPassword(user)} style={iconButtonStyle} title={`Reset password for ${user.name}`}><KeyRound size={14} /></button>}<button className="text-button" onClick={() => deleteMembers([user.id], [])} style={{ ...iconButtonStyle, color: '#b42318' }} title={`Delete ${user.name}`}><Trash2 size={14} /></button></span>}</td></tr>)}</tbody></table></div>
         {teamSelectMode && <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}><button className="secondary-button" style={{ color: '#b42318', borderColor: '#fecdca' }} onClick={() => deleteMembers(selectedUserIds, [])} disabled={deleting || selectedUserIds.length === 0}><Trash2 size={14} /> Delete selected ({selectedUserIds.length})</button><button className="secondary-button" onClick={exitTeamSelect}>Done</button></div>}
         {school.invitations.length > 0 && <div style={{ marginTop: 32 }}><h3 style={{ margin: '0 0 20px' }}>Pending invitations</h3><div style={{ marginBottom: 12 }}><button className="secondary-button" style={inviteSelectMode ? { ...compactSelectStyle, borderColor: 'var(--blue)', color: 'var(--blue)' } : compactSelectStyle} onClick={toggleInviteSelect}><CheckSquare size={14} /> {inviteSelectMode ? 'Selecting…' : 'Select'}</button></div><div className="table-wrap"><table className="admin-table"><thead><tr>{inviteSelectMode && <th style={{ width: 36 }}><input type="checkbox" checked={selectedInvitationIds.length === school.invitations.length} onChange={(e) => setSelectedInvitationIds(e.target.checked ? school.invitations.map((inv) => inv.id) : [])} aria-label="Select all invitations" /></th>}<th>Name</th><th>Email</th><th>Status</th><th>Actions</th><th /></tr></thead><tbody>{school.invitations.map((invite) => <tr key={invite.id}>{inviteSelectMode && <td><input type="checkbox" checked={selectedInvitationIds.includes(invite.id)} onChange={(e) => setSelectedInvitationIds(e.target.checked ? [...selectedInvitationIds, invite.id] : selectedInvitationIds.filter((id) => id !== invite.id))} aria-label={`Select invitation for ${invite.name}`} /></td>}<td><strong>{invite.name}</strong></td><td>{invite.email}</td><td><span className="badge badge-pending">{invite.status}</span></td><td>{session?.user?.role === 'ATLAS_ADMIN' && <button className="text-button" onClick={() => setAcceptTarget(invite)} style={{ color: '#047857' }}><CheckCircle2 size={14} /> Accept</button>}<button className="text-button" onClick={() => resend(invite.id)}><RefreshCw size={14} /> Resend</button><button className="text-button" onClick={() => revoke(invite.id)} style={{ color: '#b42318', marginLeft: 8 }}><Ban size={14} /> Revoke</button></td><td><button className="text-button" onClick={() => deleteMembers([], [invite.id])} style={{ ...iconButtonStyle, color: '#b42318' }} title={`Delete invitation for ${invite.name}`}><Trash2 size={14} /></button></td></tr>)}</tbody></table></div>{inviteSelectMode && <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}><button className="secondary-button" style={{ color: '#b42318', borderColor: '#fecdca', height: 34, fontSize: 12 }} onClick={() => deleteMembers([], selectedInvitationIds)} disabled={deleting || selectedInvitationIds.length === 0}><Trash2 size={14} /> Delete selected ({selectedInvitationIds.length})</button><button className="secondary-button" style={{ height: 34, fontSize: 12 }} onClick={exitInviteSelect}>Done</button></div>}</div>}
       </section>

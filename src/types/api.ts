@@ -135,6 +135,7 @@ export interface AdminCourse {
   durationSeconds?: number
   published: boolean
   status?: 'DRAFT' | 'REVIEW' | 'PUBLISHED' | 'ARCHIVED'
+  audience?: 'STAFF' | 'PARENT'
   muxPlaybackId: string | null
   sectionId: string | null
   section: ApiCourseSection | null

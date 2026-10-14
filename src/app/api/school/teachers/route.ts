@@ -8,7 +8,7 @@ export async function GET() {
     if (!manager.schoolId) return NextResponse.json({ teachers: [] })
 
     const users = await prisma.user.findMany({
-      where: { schoolId: manager.schoolId },
+      where: { schoolId: manager.schoolId, role: { not: 'PARENT' } },
       include: {
         progress: {
           select: { percentComplete: true, lastWatchedAt: true },

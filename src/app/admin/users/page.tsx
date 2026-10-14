@@ -126,7 +126,7 @@ export default function AdminUsersPage() {
   return <AdminShell active="users">
     <div className="page-wrap">
       <div className="page-heading">
-        <div><p className="eyebrow">Platform administration</p><h1>Users</h1><p className="muted">Manage Atlas Admins, instructors, headteachers and teachers.</p></div>
+        <div><p className="eyebrow">Platform administration</p><h1>Users</h1><p className="muted">Manage Atlas Admins, instructors, headteachers, teachers and parents.</p></div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {canManageUsers && <button className="secondary-button" onClick={() => router.push('/admin/invitations')}><Mail size={16} /> Pending invitations</button>}
           {canCreateUsers && <button className="primary-button" onClick={() => { setCreateError(''); setShowCreate(true) }}><Plus size={16} /> Add user</button>}
@@ -212,6 +212,7 @@ export default function AdminUsersPage() {
           <option value="INSTRUCTOR">Instructor</option>
           <option value="HEADTEACHER">Headteacher</option>
           <option value="TEACHER">Teacher</option>
+          <option value="PARENT">Parent</option>
         </select>
       </div>
 
@@ -269,6 +270,7 @@ function formatRole(role: string) {
     case 'INSTRUCTOR': return 'Instructor'
     case 'HEADTEACHER': return 'Headteacher'
     case 'TEACHER': return 'Teacher'
+    case 'PARENT': return 'Parent'
     default: return role
   }
 }

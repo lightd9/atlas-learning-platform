@@ -17,6 +17,7 @@ const bulkAccessSchema = z.object({
 const schoolCourseSelectionSchema = z.object({
   schoolId: z.string().min(1),
   courseIds: z.array(z.string()),
+  audience: z.enum(['STAFF', 'PARENT']).optional(),
 })
 
 export async function POST(request: Request) {
@@ -52,13 +53,16 @@ export async function PUT(request: Request) {
     if (schoolSelection.success) {
       const school = await prisma.school.findUnique({ where: { id: schoolSelection.data.schoolId }, select: { id: true, active: true } })
       if (!school || !school.active) return NextResponse.json({ error: 'Active school not found.' }, { status: 404 })
-      const courses = await prisma.course.findMany({ select: { id: true } })
+      const audience = schoolSelection.data.audience ?? 'STAFF'
+      const courses = await prisma.course.findMany({ where: { audience }, select: { id: true } })
+      const courseIds = courses.map((course) => course.id)
       const selected = new Set(schoolSelection.data.courseIds)
       await prisma.$transaction(async (tx) => {
-        // All courses selected means restore the default: available to this
-        // school without storing unnecessary overrides.
+        // All courses for this audience selected means restore the default:
+        // available to this school without storing unnecessary overrides. Scope
+        // removal to this audience so parent and staff selections stay separate.
         if (selected.size === courses.length && courses.every((course) => selected.has(course.id))) {
-          await tx.schoolCourse.deleteMany({ where: { schoolId: school.id } })
+          if (courseIds.length > 0) await tx.schoolCourse.deleteMany({ where: { schoolId: school.id, courseId: { in: courseIds } } })
           return
         }
         for (const course of courses) {

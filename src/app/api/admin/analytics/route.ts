@@ -12,7 +12,7 @@ export async function GET() {
       prisma.school.findMany({
         where: { active: true },
         include: {
-          _count: { select: { users: true } },
+          _count: { select: { users: { where: { role: { not: 'PARENT' } } } } },
           users: {
             where: { role: 'TEACHER' },
             select: { progress: { select: { percentComplete: true, status: true } } },

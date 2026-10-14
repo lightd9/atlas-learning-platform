@@ -11,6 +11,7 @@ const updateSchema = z.object({
   description: z.string().min(1).optional(),
   coverImageUrl: z.preprocess(cleanNullable, z.string().url().nullable().optional()),
   status: z.enum(['DRAFT', 'REVIEW', 'PUBLISHED', 'ARCHIVED']).optional(),
+  audience: z.enum(['STAFF', 'PARENT']).optional(),
   published: z.boolean().optional(), // Legacy compatibility for existing callers.
   sectionId: z.preprocess(cleanNullable, z.string().nullable().optional()),
   notes: z.preprocess(cleanNullable, z.string().max(10000).nullable().optional()),

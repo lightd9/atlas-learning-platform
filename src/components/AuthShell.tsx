@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { ReactNode, useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import {
-  BarChart3, BookOpen, ChevronRight, Home, LogOut,
+  BarChart3, BookOpen, ChevronRight, HeartHandshake, Home, LogOut,
   Menu, Search, Settings, ShieldCheck, Users, X, Shield,
 } from 'lucide-react'
 import Logo from '@/components/Logo'
@@ -46,7 +46,7 @@ export default function AuthShell({ children, active }: { children: ReactNode; a
         <span className="school-name">{schoolName || 'Atlas Learning'}</span>
         <NotificationBell />
         <div className="avatar">{initials}</div>
-        <span className="user-name">{user?.name || 'Loading...'}<small>{user?.role === 'HEADTEACHER' ? 'Headteacher' : user?.role === 'ATLAS_ADMIN' ? 'Atlas Admin' : user?.role === 'ATLAS_EMPLOYEE' ? 'Atlas Employee' : user?.role === 'INSTRUCTOR' ? 'Instructor' : 'Teacher'}</small></span>
+        <span className="user-name">{user?.name || 'Loading...'}<small>{user?.role === 'HEADTEACHER' ? 'Headteacher' : user?.role === 'ATLAS_ADMIN' ? 'Atlas Admin' : user?.role === 'ATLAS_EMPLOYEE' ? 'Atlas Employee' : user?.role === 'INSTRUCTOR' ? 'Instructor' : user?.role === 'PARENT' ? 'Parent' : 'Teacher'}</small></span>
       </div>
     </header>
     <div className="body-layout">
@@ -77,6 +77,9 @@ export default function AuthShell({ children, active }: { children: ReactNode; a
         </Link>}
         {isHeadteacher && <Link href="/school/teachers" className={`side-item ${pathname === '/school/teachers' ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
           <Users size={18} /><span>Manage teachers</span>{pathname === '/school/teachers' && <span className="active-pill" />}
+        </Link>}
+        {isHeadteacher && <Link href="/school/parents" className={`side-item ${pathname === '/school/parents' ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+          <HeartHandshake size={18} /><span>Parents</span>{pathname === '/school/parents' && <span className="active-pill" />}
         </Link>}
         <div className="side-divider" />
         <div className="side-label">Account</div>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireSchoolUser } from '@/lib/access'
+import { audienceForRole, requireSchoolUser } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { apiErrorResponse } from '@/lib/api-errors'
 
@@ -11,6 +11,7 @@ export async function GET() {
       where: {
         published: true,
         status: 'PUBLISHED',
+        audience: audienceForRole(user.role),
         OR: [
           { schoolAccess: { none: { schoolId: user.schoolId ?? undefined } } },
           { schoolAccess: { some: { schoolId: user.schoolId ?? undefined, enabled: true } } },

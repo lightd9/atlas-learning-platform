@@ -23,6 +23,7 @@ export default function AdminCoursesPage() {
   const [schools, setSchools] = useState<{ id: string; name: string; active?: boolean }[]>([])
   const [availabilityMode, setAvailabilityMode] = useState<'ALL' | 'SELECTED'>('ALL')
   const [selectedSchoolIds, setSelectedSchoolIds] = useState<string[]>([])
+  const [audience, setAudience] = useState<'STAFF' | 'PARENT'>('STAFF')
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({ slug: '', title: '', description: '', coverImageUrl: '', durationSeconds: 1200, muxPlaybackId: '', notes: '' })
@@ -46,7 +47,7 @@ export default function AdminCoursesPage() {
     const res = await fetch('/api/admin/courses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, durationMinutes: Math.max(1, Math.ceil(form.durationSeconds / 60)), modules, resources }),
+      body: JSON.stringify({ ...form, audience, durationMinutes: Math.max(1, Math.ceil(form.durationSeconds / 60)), modules, resources }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -72,7 +73,7 @@ export default function AdminCoursesPage() {
     setForm({ slug: '', title: '', description: '', coverImageUrl: '', durationSeconds: 1200, muxPlaybackId: '', notes: '' })
     setModules([])
     setResources([])
-    setAvailabilityMode('ALL'); setSelectedSchoolIds(schools.map((school) => school.id))
+    setAvailabilityMode('ALL'); setSelectedSchoolIds(schools.map((school) => school.id)); setAudience('STAFF')
     toast('Course created', 'success')
   }
 
@@ -121,6 +122,7 @@ export default function AdminCoursesPage() {
     form.durationSeconds !== 1200 ||
     resources.length > 0 ||
     modules.length > 0 ||
+    audience !== 'STAFF' ||
     availabilityMode === 'SELECTED'
 
   function resetCreateForm() {
@@ -129,6 +131,7 @@ export default function AdminCoursesPage() {
     setModules([])
     setAvailabilityMode('ALL')
     setSelectedSchoolIds(schools.map((school) => school.id))
+    setAudience('STAFF')
     setError('')
   }
 
@@ -164,7 +167,8 @@ export default function AdminCoursesPage() {
             <label style={labelStyle}>Course duration<DurationInput totalSeconds={form.durationSeconds} onChange={(durationSeconds) => setForm({ ...form, durationSeconds })} /><small style={helperStyle}>Used for standalone course videos. If lessons are added, lesson durations are used instead.</small></label>
             <label style={labelStyle}>Course Mux playback ID<input value={form.muxPlaybackId} onChange={(e) => setForm({ ...form, muxPlaybackId: e.target.value })} placeholder="Video playback ID" style={inputStyle} /><small style={helperStyle}>Use this when the course is one standalone video without modules or lessons.</small></label>
             </fieldset>
-            {session?.user?.role === 'ATLAS_ADMIN' && <fieldset style={fieldSetStyle}><legend style={legendStyle}>School availability</legend><p style={{ ...helperStyle, margin: 0 }}>New courses are available to all active schools by default. Choose selected schools only when this course should be restricted.</p><label style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 8 }}><input type="radio" name="availability" checked={availabilityMode === 'ALL'} onChange={() => { setAvailabilityMode('ALL'); setSelectedSchoolIds(schools.map((school) => school.id)) }} /> All active schools</label><label style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 8 }}><input type="radio" name="availability" checked={availabilityMode === 'SELECTED'} onChange={() => setAvailabilityMode('SELECTED')} /> Selected schools only</label>{availabilityMode === 'SELECTED' && <><div style={{ display: 'flex', gap: 8 }}><button className="text-button" type="button" onClick={() => setSelectedSchoolIds(schools.map((school) => school.id))}>Select all</button><button className="text-button" type="button" onClick={() => setSelectedSchoolIds([])}>Deselect all</button><span style={{ ...helperStyle, marginLeft: 'auto' }}>{selectedSchoolIds.length}/{schools.length} selected</span></div><div style={{ maxHeight: 220, overflowY: 'auto', borderTop: '1px solid var(--line)' }}>{schools.map((school) => <label key={school.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 13 }}><span>{school.name}</span><input type="checkbox" checked={selectedSchoolIds.includes(school.id)} onChange={(e) => setSelectedSchoolIds(e.target.checked ? [...selectedSchoolIds, school.id] : selectedSchoolIds.filter((id) => id !== school.id))} aria-label={`Make this course available to ${school.name}`} /></label>)}</div></>}</fieldset>}
+            {session?.user?.role === 'ATLAS_ADMIN' && <fieldset style={fieldSetStyle}><legend style={legendStyle}>Audience</legend><p style={{ ...helperStyle, margin: 0 }}>Choose who this course is for. Parent courses are visible only to parents and are managed per school.</p><label style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 8 }}><input type="radio" name="audience" checked={audience === 'STAFF'} onChange={() => setAudience('STAFF')} /> School staff</label><label style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 8 }}><input type="radio" name="audience" checked={audience === 'PARENT'} onChange={() => { setAudience('PARENT'); setAvailabilityMode('SELECTED') }} /> Parents</label></fieldset>}
+            {session?.user?.role === 'ATLAS_ADMIN' && <fieldset style={fieldSetStyle}><legend style={legendStyle}>School availability</legend><p style={{ ...helperStyle, margin: 0 }}>{audience === 'PARENT' ? "Choose which schools' parents can access this course." : 'New courses are available to all active schools by default. Choose selected schools only when this course should be restricted.'}</p><label style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 8 }}><input type="radio" name="availability" checked={availabilityMode === 'ALL'} onChange={() => { setAvailabilityMode('ALL'); setSelectedSchoolIds(schools.map((school) => school.id)) }} /> All active schools</label><label style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: 8 }}><input type="radio" name="availability" checked={availabilityMode === 'SELECTED'} onChange={() => setAvailabilityMode('SELECTED')} /> Selected schools only</label>{availabilityMode === 'SELECTED' && <><div style={{ display: 'flex', gap: 8 }}><button className="text-button" type="button" onClick={() => setSelectedSchoolIds(schools.map((school) => school.id))}>Select all</button><button className="text-button" type="button" onClick={() => setSelectedSchoolIds([])}>Deselect all</button><span style={{ ...helperStyle, marginLeft: 'auto' }}>{selectedSchoolIds.length}/{schools.length} selected</span></div><div style={{ maxHeight: 220, overflowY: 'auto', borderTop: '1px solid var(--line)' }}>{schools.map((school) => <label key={school.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 13 }}><span>{school.name}</span><input type="checkbox" checked={selectedSchoolIds.includes(school.id)} onChange={(e) => setSelectedSchoolIds(e.target.checked ? [...selectedSchoolIds, school.id] : selectedSchoolIds.filter((id) => id !== school.id))} aria-label={`Make this course available to ${school.name}`} /></label>)}</div></>}</fieldset>}
             <label style={labelStyle}>Learner notes<textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes learners should read below the video player" style={{ ...inputStyle, height: 90, paddingTop: 10, resize: 'vertical' }} /></label>
 
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 16 }}><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}><div><h4 style={{ margin: 0, fontSize: 14 }}>Downloadable resources</h4><p style={helperStyle}>Add a direct file URL or trusted external download link.</p></div><button type="button" className="secondary-button" style={{ height: 32, fontSize: 12 }} onClick={() => setResources([...resources, { title: '', description: '', url: '', fileName: '', sortOrder: resources.length }])}><Plus size={14} /> Add resource</button></div>{resources.map((resource, index) => <div className="course-create-resource-row" key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr 1.4fr 1fr 32px', gap: 7, marginBottom: 8 }}><input placeholder="Resource title" value={resource.title} onChange={(e) => { const next = [...resources]; next[index] = { ...next[index], title: e.target.value }; setResources(next) }} style={smallInputStyle} /><input placeholder="Short description" value={resource.description} onChange={(e) => { const next = [...resources]; next[index] = { ...next[index], description: e.target.value }; setResources(next) }} style={smallInputStyle} /><input placeholder="Download URL" type="url" value={resource.url} onChange={(e) => { const next = [...resources]; next[index] = { ...next[index], url: e.target.value }; setResources(next) }} style={smallInputStyle} /><input placeholder="File name (optional)" value={resource.fileName} onChange={(e) => { const next = [...resources]; next[index] = { ...next[index], fileName: e.target.value }; setResources(next) }} style={smallInputStyle} /><button type="button" className="icon-button" aria-label="Remove resource" onClick={() => setResources(resources.filter((_, resourceIndex) => resourceIndex !== index))}><Trash2 size={14} /></button></div>)}</div>
@@ -226,6 +230,7 @@ export default function AdminCoursesPage() {
                 <th>Slug</th>
                 <th>Duration</th>
                 <th>Status</th>
+                <th>Audience</th>
                 <th>Schools</th>
                 <th>Enrollments</th>
                 <th>Actions</th>
@@ -238,6 +243,7 @@ export default function AdminCoursesPage() {
                   <td style={{ color: 'var(--muted)' }}>{course.slug}</td>
                   <td>{formatClock(courseTotalSeconds(course))}</td>
                   <td><span className={`badge ${course.status === 'PUBLISHED' ? 'badge-active' : course.status === 'REVIEW' ? 'badge-pending' : 'badge-inactive'}`}>{course.status === 'REVIEW' ? 'Ready for review' : course.status ?? (course.published ? 'Published' : 'Draft')}</span></td>
+                  <td><span className="badge badge-pending">{course.audience === 'PARENT' ? 'Parents' : 'Staff'}</span></td>
                   <td>{course.schoolAccessCount}</td>
                   <td>{course.progressCount}</td>
                   <td>

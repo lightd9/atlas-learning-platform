@@ -71,6 +71,7 @@ export default function DashboardPage() {
   }, [status, session?.user?.role, router])
 
   const firstName = session?.user?.name?.split(' ')[0] || 'there'
+  const isParent = session?.user?.role === 'PARENT'
   const mapped = courses.map((c, i) => mapCourse(c, i))
 
   const activity = courses
@@ -122,7 +123,7 @@ export default function DashboardPage() {
         <div>
           <p className="eyebrow">{formatDate()}</p>
           <h1>{getGreeting()}, {firstName} <span className="wave">✦</span></h1>
-          <p className="muted">Keep building your team&apos;s digital confidence, one lesson at a time.</p>
+          <p className="muted">{isParent ? "Support your child's learning journey, one lesson at a time." : "Keep building your team's digital confidence, one lesson at a time."}</p>
         </div>
         <Link className="primary-button" href="/courses">Explore learning <ArrowUpRight size={17} /></Link>
       </div>
@@ -131,7 +132,7 @@ export default function DashboardPage() {
         <div className="hero-copy">
           <span className="tag tag-light">Your learning journey</span>
           <h2>Small steps.<br /><em>Real confidence.</em></h2>
-          <p>Practical training designed to fit around the busy rhythm of school life.</p>
+          <p>{isParent ? 'Practical guidance designed to fit around the busy rhythm of family life.' : 'Practical training designed to fit around the busy rhythm of school life.'}</p>
           {continueCourse
             ? <Link className="hero-button" href={`/courses/${continueCourse.id}`}>Continue learning <Play size={14} fill="currentColor" /></Link>
             : <Link className="hero-button" href="/courses">Start learning <Play size={14} fill="currentColor" /></Link>

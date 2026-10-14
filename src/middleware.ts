@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const publicPaths = ['/', '/about', '/contact', '/explore', '/privacy', '/terms', '/login', '/forgot-password', '/resend-invitation']
+const publicPaths = ['/', '/about', '/contact', '/explore', '/privacy', '/terms', '/login', '/register', '/forgot-password', '/resend-invitation']
 const authPrefixes = ['/setup/', '/reset-password/']
 
 export function middleware(request: NextRequest) {

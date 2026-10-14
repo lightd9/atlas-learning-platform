@@ -88,17 +88,25 @@ export async function requireOwnedCourseEditor(courseId: string) {
   return user
 }
 
-export async function requireAvailableCourse(user: { schoolId: string | null }, courseId: string) {
+export type CourseAudienceValue = 'STAFF' | 'PARENT'
+
+export function audienceForRole(role: string): CourseAudienceValue {
+  return role === 'PARENT' ? 'PARENT' : 'STAFF'
+}
+
+export async function requireAvailableCourse(user: { schoolId: string | null; role: string }, courseId: string) {
   const course = await prisma.course.findUnique({
     where: { id: courseId },
     select: {
       id: true,
       published: true,
+      audience: true,
       schoolAccess: user.schoolId ? { where: { schoolId: user.schoolId }, select: { enabled: true } } : false,
     },
   })
   if (!course) throw new Error('COURSE_NOT_FOUND')
   if (!course.published) throw new Error('FORBIDDEN')
+  if (course.audience !== audienceForRole(user.role)) throw new Error('FORBIDDEN')
   if (user.schoolId && course.schoolAccess[0]?.enabled === false) throw new Error('FORBIDDEN')
   return course
 }

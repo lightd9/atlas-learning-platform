@@ -19,15 +19,15 @@ export async function GET(request: Request) {
 
     const [users, courses, allProgress] = await Promise.all([
       prisma.user.findMany({
-        where: { schoolId },
+        where: { schoolId, role: { not: 'PARENT' } },
         include: { progress: { select: { percentComplete: true, status: true, lastWatchedAt: true } } },
       }),
       prisma.course.findMany({
-        where: { published: true },
+        where: { published: true, audience: 'STAFF' },
         select: { id: true, title: true },
       }),
       prisma.courseProgress.findMany({
-        where: { user: { schoolId } },
+        where: { user: { schoolId, role: { not: 'PARENT' } } },
         select: { userId: true, courseId: true, percentComplete: true, status: true, watchedSeconds: true, lastWatchedAt: true },
       }),
     ])

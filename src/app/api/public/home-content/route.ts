@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const placements = await prisma.homePagePlacement.findMany({
-    where: { active: true, course: { published: true, status: 'PUBLISHED' } },
+    where: { active: true, course: { published: true, status: 'PUBLISHED', audience: 'STAFF' } },
     orderBy: [{ section: 'asc' }, { sortOrder: 'asc' }],
     include: { course: { select: { id: true, slug: true, title: true, description: true, coverImageUrl: true, durationMinutes: true, muxPlaybackId: true, section: { select: { name: true } } } } },
   })

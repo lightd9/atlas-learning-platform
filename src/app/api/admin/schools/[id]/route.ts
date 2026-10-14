@@ -14,11 +14,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     await requirePermission('SCHOOL_CREATE')
     const { id } = await params
-    const [school, totalPublishedCourses] = await Promise.all([prisma.school.findUnique({
+    const [school, totalPublishedCourses, parentCount] = await Promise.all([prisma.school.findUnique({
       where: { id },
       include: {
-        _count: { select: { users: true, courseAccess: true } },
+        _count: { select: { courseAccess: true } },
         users: {
+          where: { role: { not: 'PARENT' } },
           select: { id: true, name: true, email: true, role: true, status: true, lastActiveAt: true, createdAt: true },
           orderBy: { createdAt: 'asc' },
         },
@@ -28,11 +29,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           orderBy: { createdAt: 'desc' },
         },
         courseAccess: {
-          include: { course: { select: { id: true, title: true, published: true } } },
+          include: { course: { select: { id: true, title: true, published: true, audience: true } } },
           orderBy: { createdAt: 'desc' },
         },
       },
-    }), prisma.course.count({ where: { published: true } })])
+    }), prisma.course.count({ where: { published: true } }), prisma.user.count({ where: { schoolId: id, role: 'PARENT' } })])
     if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 })
     return NextResponse.json({
       school: {
@@ -40,8 +41,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         name: school.name,
         slug: school.slug,
         active: school.active,
-        userCount: school._count.users,
+        userCount: school.users.length,
+        parentCount,
         courseCount: Math.max(0, totalPublishedCourses - school.courseAccess.filter((access) => !access.enabled).length),
+        parentRegistration: { enabled: school.parentRegistrationEnabled, token: school.parentRegistrationToken },
         createdAt: school.createdAt.toISOString(),
         users: school.users,
         invitations: school.invitations,

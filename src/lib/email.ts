@@ -35,6 +35,12 @@ const roleCopy: Record<UserRole, { label: string; article: 'a' | 'an'; subject: 
     subject: 'You have been invited to learn with Atlas Learning',
     description: 'You will have access to your school\'s assigned courses and personal learning progress.',
   },
+  PARENT: {
+    label: 'Parent',
+    article: 'a',
+    subject: 'Your parent account for Atlas Learning',
+    description: 'You will have access to the courses your child\'s school has shared with parents.',
+  },
 }
 
 function layout(content: string) {
