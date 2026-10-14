@@ -220,7 +220,7 @@ export default function AdminUsersPage() {
         <div className="panel" style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>No users found.</div>
       ) : (
         <div className="panel" style={{ overflow: 'hidden', padding: 0 }}>
-          <div className="table-wrap"><table className="admin-table">
+          <div className="table-wrap"><table className="admin-table users-table">
             <thead>
               <tr>
                 <th>Name</th>

@@ -116,7 +116,6 @@ export default function AdminSchoolsPage() {
             <thead>
               <tr>
                 <th>School</th>
-                <th>Slug</th>
                 <th>Users</th>
                 <th>Courses</th>
                 <th>Status</th>
@@ -127,7 +126,6 @@ export default function AdminSchoolsPage() {
               {filtered.map((school) => (
                 <tr key={school.id} className="school-row" role="link" onClick={() => router.push(`/admin/schools/${school.id}`)} tabIndex={0} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); router.push(`/admin/schools/${school.id}`) } }} aria-label={`View ${school.name} profile`}>
                   <td><strong>{school.name}</strong></td>
-                  <td style={{ color: 'var(--muted)' }}>{school.slug}</td>
                   <td>{school.userCount}</td>
                   <td>{school.courseCount}</td>
                   <td><span className={`badge ${school.active ? 'badge-active' : 'badge-inactive'}`}>{school.active ? 'Active' : 'Disabled'}</span></td>

@@ -223,7 +223,7 @@ export default function AdminCoursesPage() {
         <div className="panel" style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>No courses found.</div>
       ) : (
         <div className="panel table-wrap" style={{ padding: 0 }}>
-          <table className="admin-table">
+          <table className="admin-table courses-table">
             <thead>
               <tr>
                 <th>Title</th>
