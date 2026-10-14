@@ -17,6 +17,7 @@ export interface ApiCourse {
     id: string
     status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
     watchedSeconds: number
+      lastPositionSeconds?: number
     durationSeconds: number
     percentComplete: number
     lastWatchedAt: string | null
@@ -55,6 +56,7 @@ export interface ApiLesson {
     id: string
     status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
     watchedSeconds: number
+      lastPositionSeconds?: number
     durationSeconds: number
     percentComplete: number
     lastWatchedAt: string | null

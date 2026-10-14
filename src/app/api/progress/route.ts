@@ -10,6 +10,7 @@ const progressSchema = z.object({
   watchedSeconds: z.number().int().nonnegative(),
   durationSeconds: z.number().int().positive(),
   watchedRanges: z.array(z.object({ start: z.number().finite(), end: z.number().finite() })).max(500).optional(),
+  lastPositionSeconds: z.number().int().nonnegative().optional(),
 })
 
 type WatchedRange = { start: number; end: number }
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     const parsed = progressSchema.safeParse(await request.json())
     if (!parsed.success) return NextResponse.json({ error: 'Invalid progress payload' }, { status: 400 })
 
-    const { courseId, lessonId, watchedSeconds, durationSeconds, watchedRanges } = parsed.data
+    const { courseId, lessonId, watchedSeconds, durationSeconds, watchedRanges, lastPositionSeconds } = parsed.data
     await requireAvailableCourse(user, courseId)
     const percent = Math.min(100, (watchedSeconds / durationSeconds) * 100)
     const completed = percent >= 95
@@ -60,8 +61,8 @@ export async function POST(request: Request) {
       const completed = percent >= 95
       const lessonProgress = await prisma.lessonProgress.upsert({
         where: { userId_lessonId: { userId: user.id, lessonId } },
-        create: { userId: user.id, lessonId, watchedSeconds: coveredSeconds, durationSeconds: effectiveDuration, watchedRanges: JSON.stringify(ranges), percentComplete: percent, status: completed ? 'COMPLETED' : percent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: completed ? new Date() : null, lastWatchedAt: new Date() },
-        update: { watchedSeconds: coveredSeconds, durationSeconds: effectiveDuration, watchedRanges: JSON.stringify(ranges), percentComplete: percent, status: completed ? 'COMPLETED' : percent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: completed ? new Date() : null, lastWatchedAt: new Date() },
+        create: { userId: user.id, lessonId, watchedSeconds: coveredSeconds, lastPositionSeconds: Math.min(effectiveDuration, lastPositionSeconds ?? watchedSeconds), durationSeconds: effectiveDuration, watchedRanges: JSON.stringify(ranges), percentComplete: percent, status: completed ? 'COMPLETED' : percent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: completed ? new Date() : null, lastWatchedAt: new Date() },
+        update: { watchedSeconds: coveredSeconds, lastPositionSeconds: Math.min(effectiveDuration, lastPositionSeconds ?? watchedSeconds), durationSeconds: effectiveDuration, watchedRanges: JSON.stringify(ranges), percentComplete: percent, status: completed ? 'COMPLETED' : percent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: completed ? new Date() : null, lastWatchedAt: new Date() },
       })
       const lessons = await prisma.lesson.findMany({ where: { module: { courseId }, published: true }, include: { progress: { where: { userId: user.id } } } })
       const totalDuration = lessons.reduce((sum, item) => sum + (item.durationSeconds || 0), 0)
@@ -70,8 +71,8 @@ export async function POST(request: Request) {
       const courseCompleted = coursePercent >= 95
       const courseProgress = await prisma.courseProgress.upsert({
         where: { userId_courseId: { userId: user.id, courseId } },
-        create: { userId: user.id, courseId, watchedSeconds: watchedTotal, durationSeconds: totalDuration, percentComplete: coursePercent, status: courseCompleted ? 'COMPLETED' : coursePercent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: courseCompleted ? new Date() : null, lastWatchedAt: new Date() },
-        update: { watchedSeconds: watchedTotal, durationSeconds: totalDuration, percentComplete: coursePercent, status: courseCompleted ? 'COMPLETED' : coursePercent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: courseCompleted ? new Date() : null, lastWatchedAt: new Date() },
+        create: { userId: user.id, courseId, watchedSeconds: watchedTotal, lastPositionSeconds: Math.min(totalDuration, lastPositionSeconds ?? watchedSeconds), durationSeconds: totalDuration, percentComplete: coursePercent, status: courseCompleted ? 'COMPLETED' : coursePercent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: courseCompleted ? new Date() : null, lastWatchedAt: new Date() },
+        update: { watchedSeconds: watchedTotal, lastPositionSeconds: Math.min(totalDuration, lastPositionSeconds ?? watchedSeconds), durationSeconds: totalDuration, percentComplete: coursePercent, status: courseCompleted ? 'COMPLETED' : coursePercent > 0 ? 'IN_PROGRESS' : 'NOT_STARTED', completedAt: courseCompleted ? new Date() : null, lastWatchedAt: new Date() },
       })
       return NextResponse.json({ progress: courseProgress, lessonProgress })
     }

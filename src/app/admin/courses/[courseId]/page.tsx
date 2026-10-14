@@ -188,7 +188,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
             <button className="secondary-button" onClick={() => router.push(`/admin/courses/${courseId}/preview`)}>Preview course</button>
           </div>
 
-          <div className="course-editor-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24 }}>
+          <div className="course-editor-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
             <form onSubmit={handleSave} onChange={() => setDetailsDirty(true)} className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <label style={labelStyle}>
                 Title
@@ -228,7 +228,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                 {schools.length > 0 ? (
                   <>
                   <div style={{ display: 'flex', gap: 8, marginTop: 12, marginBottom: 8 }}><button className="text-button" onClick={() => setSelectedSchoolIds(schools.map((school) => school.id))}>Select all</button><button className="text-button" onClick={() => setSelectedSchoolIds([])}>Deselect all</button><span className="muted" style={{ marginLeft: 'auto', fontSize: 11 }}>{selectedSchoolIds.length}/{schools.length} selected</span></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflowY: 'auto', paddingRight: 6 }}>
                     {schools.map((school) => {
                       return <label key={school.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line)', fontSize: 13 }}>
                         <span>{school.name}</span><input type="checkbox" checked={selectedSchoolIds.includes(school.id)} onChange={(e) => setSelectedSchoolIds(e.target.checked ? [...selectedSchoolIds, school.id] : selectedSchoolIds.filter((id) => id !== school.id))} aria-label={`Enable ${course.title} for ${school.name}`} />

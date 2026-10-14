@@ -9,7 +9,7 @@ interface VideoPlayerProps {
   courseId: string
   lessonId?: string
   initialPosition?: number
-  onProgress?: (watchedSeconds: number, durationSeconds: number, watchedRanges: { start: number; end: number }[]) => void
+  onProgress?: (watchedSeconds: number, durationSeconds: number, watchedRanges: { start: number; end: number }[], lastPositionSeconds: number) => void
   onComplete?: () => void
 }
 
@@ -73,7 +73,7 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
     if (currentVideo) {
       if (Number.isFinite(currentVideo.duration) && currentVideo.duration > 0) {
         const covered = watchedRangesRef.current.reduce((total, range) => total + range.end - range.start, 0)
-        onProgressRef.current?.(Math.floor(covered), Math.floor(currentVideo.duration), watchedRangesRef.current.map((range) => ({ ...range })))
+        onProgressRef.current?.(Math.floor(covered), Math.floor(currentVideo.duration), watchedRangesRef.current.map((range) => ({ ...range })), Math.floor(currentVideo.currentTime))
       }
       currentVideo.pause()
       currentVideo.removeAttribute('src')
@@ -161,8 +161,8 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
     if (!force && Date.now() - lastSaveAtRef.current < 10000) return
     lastSaveAtRef.current = Date.now()
     const covered = watchedRangesRef.current.reduce((total, range) => total + range.end - range.start, 0)
-    onProgress?.(Math.floor(covered), Math.floor(dur), watchedRangesRef.current.map((range) => ({ ...range })))
-  }, [onProgress])
+    onProgressRef.current?.(Math.floor(covered), Math.floor(dur), watchedRangesRef.current.map((range) => ({ ...range })), Math.floor(Math.max(0, time)))
+  }, [])
 
   useEffect(() => {
     saveInterval.current = setInterval(() => {

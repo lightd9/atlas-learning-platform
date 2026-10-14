@@ -28,6 +28,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     let course = await prisma.course.findUnique({
       where: { id },
       include: {
+        _count: { select: { progress: true } },
         schoolAccess: { include: { school: { select: { id: true, name: true } } } },
         section: { select: { id: true, name: true, slug: true, description: true, sortOrder: true } },
       },
@@ -43,7 +44,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       console.warn('Unable to load optional course resources', resourceError)
     }
 
-    return NextResponse.json({ course: { ...course, resources } })
+    const activeSchoolCount = await prisma.school.count({ where: { active: true } })
+    const disabledSchoolCount = course.schoolAccess.filter((access) => !access.enabled).length
+
+    return NextResponse.json({
+      course: {
+        ...course,
+        progressCount: course._count.progress,
+        schoolAccessCount: Math.max(0, activeSchoolCount - disabledSchoolCount),
+        resources,
+      },
+    })
   } catch (error) {
     return apiErrorResponse(error, 'Unable to load course')
   }

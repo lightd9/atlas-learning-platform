@@ -236,6 +236,7 @@ model LessonProgress {
   lesson            Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   status            ProgressStatus @default(NOT_STARTED)
   watchedSeconds    Int            @default(0)
+  lastPositionSeconds Int          @default(0)
   watchedRanges     String         @default("[]") @db.Text
   durationSeconds   Int            @default(0)
   percentComplete   Decimal        @default(0) @db.Decimal(5, 2)
@@ -282,6 +283,7 @@ model CourseProgress {
   course            Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
   status            ProgressStatus @default(NOT_STARTED)
   watchedSeconds    Int            @default(0)
+  lastPositionSeconds Int          @default(0)
   durationSeconds   Int            @default(0)
   percentComplete   Decimal        @default(0) @db.Decimal(5, 2)
   completedAt       DateTime?
