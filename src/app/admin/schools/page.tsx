@@ -112,7 +112,7 @@ export default function AdminSchoolsPage() {
         <div className="panel" style={{ padding: 32, textAlign: 'center', color: 'var(--muted)' }}>No schools found.</div>
       ) : (
         <div className="panel table-wrap" style={{ padding: 0 }}>
-          <table className="admin-table">
+          <table className="admin-table schools-table">
             <thead>
               <tr>
                 <th>School</th>
