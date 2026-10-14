@@ -2420,6 +2420,14 @@
   }
 }
 
+/* The parent signup form is taller than the login form. Keep it clear of the
+   floating back button, and let it scroll instead of overflowing on short screens. */
+.register-page .login-card {
+  justify-content: safe center;
+  overflow-y: auto;
+  padding-top: 92px;
+}
+
 /* Final navbar scroll positioning. */
 
 @media (max-width: 760px) {

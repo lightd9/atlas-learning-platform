@@ -56,7 +56,7 @@ export default function RegisterForm() {
     router.refresh()
   }
 
-  return <div className="login-page">
+  return <div className="login-page register-page">
     <div className="login-layout">
       <aside className="login-visual">
         <Link className="login-visual-brand" href="/" aria-label="Atlas Learning home"><Logo /></Link>

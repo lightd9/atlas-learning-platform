@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Building2, Plus, School as SchoolIcon, Search } from 'lucide-react'
+import { Building2, Plus, School as SchoolIcon, Search, Trash2 } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import AppModal from '@/components/AppModal'
 import SetupLinkCard from '@/components/SetupLinkCard'
@@ -21,6 +21,7 @@ export default function AdminSchoolsPage() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [setup, setSetup] = useState<{ invitationId?: string; url: string; expiresAt?: string } | null>(null)
+  const canDelete = session?.user?.role === 'ATLAS_ADMIN'
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
@@ -46,6 +47,18 @@ export default function AdminSchoolsPage() {
     setShowCreate(false)
     setForm({ name: '', slug: '', headteacherEmail: '', headteacherName: '' })
     toast('School created', 'success')
+  }
+
+  async function deleteSchool(school: AdminSchool) {
+    if (!window.confirm(`Delete ${school.name}? This permanently removes the school, its headteacher, teachers, parents, invitations and course assignments. This cannot be undone.`)) return
+    const res = await fetch(`/api/admin/schools/${school.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setSchools(schools.filter((item) => item.id !== school.id))
+      toast('School deleted', 'success')
+    } else {
+      const data = await res.json().catch(() => ({}))
+      toast(data.error ?? 'Unable to delete school', 'error')
+    }
   }
 
   const createDirty =
@@ -107,6 +120,7 @@ export default function AdminSchoolsPage() {
                 <th>Users</th>
                 <th>Courses</th>
                 <th>Status</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -117,6 +131,9 @@ export default function AdminSchoolsPage() {
                   <td>{school.userCount}</td>
                   <td>{school.courseCount}</td>
                   <td><span className={`badge ${school.active ? 'badge-active' : 'badge-inactive'}`}>{school.active ? 'Active' : 'Disabled'}</span></td>
+                  <td onClick={(event) => event.stopPropagation()}>
+                    {canDelete && <button className="icon-button" title="Delete school" aria-label={`Delete ${school.name}`} onClick={(event) => { event.stopPropagation(); deleteSchool(school) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation() }}><Trash2 size={16} style={{ color: '#b42318' }} /></button>}
+                  </td>
                 </tr>
               ))}
             </tbody>

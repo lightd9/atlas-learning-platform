@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAtlasAdmin, requirePermission } from '@/lib/access'
+import { auditLog } from '@/lib/audit'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -90,6 +91,48 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ school: { id: school.id, name: school.name, slug: school.slug, active: school.active } })
   } catch (error) {
     const message = error instanceof Error && error.message === 'UNAUTHORIZED' ? 'Unauthorized' : 'Unable to update school'
+    return NextResponse.json({ error: message }, { status: message === 'Unauthorized' ? 401 : 403 })
+  }
+}
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const admin = await requireAtlasAdmin()
+    const { id } = await params
+
+    const school = await prisma.school.findUnique({ where: { id }, select: { id: true, name: true, slug: true } })
+    if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 })
+
+    // School-bound members (headteachers, teachers, parents) and anything they
+    // own are removed with the school. Atlas-level accounts are never touched.
+    const members = await prisma.user.findMany({
+      where: { schoolId: id, role: { in: ['HEADTEACHER', 'TEACHER', 'PARENT'] } },
+      select: { id: true },
+    })
+    const memberIds = members.map((member) => member.id)
+
+    const invitationWhere = {
+      OR: [
+        { schoolId: id },
+        ...(memberIds.length ? [{ invitedById: { in: memberIds } }] : []),
+      ],
+    }
+
+    await prisma.$transaction([
+      prisma.invitation.deleteMany({ where: invitationWhere }),
+      prisma.user.deleteMany({ where: { id: { in: memberIds } } }),
+      prisma.school.delete({ where: { id } }),
+    ])
+
+    await auditLog({
+      action: 'SCHOOL.DELETE',
+      userId: admin.id,
+      details: `Deleted school ${school.name} (${school.slug})${memberIds.length ? ` with ${memberIds.length} member(s)` : ''}`,
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    const message = error instanceof Error && error.message === 'UNAUTHORIZED' ? 'Unauthorized' : 'Unable to delete school'
     return NextResponse.json({ error: message }, { status: message === 'Unauthorized' ? 401 : 403 })
   }
 }
