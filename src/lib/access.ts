@@ -94,6 +94,26 @@ export function audienceForRole(role: string): CourseAudienceValue {
   return role === 'PARENT' ? 'PARENT' : 'STAFF'
 }
 
+// School managers (headteachers and Atlas Admins) may view any published
+// course that is available to their school, regardless of audience. This is
+// used for read-only previews (for example, a headteacher previewing the
+// parent courses their school shares) and never records learner progress.
+export async function requireSchoolVisibleCourse(user: { schoolId: string | null; role: string }, courseId: string) {
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: {
+      id: true,
+      published: true,
+      audience: true,
+      schoolAccess: user.schoolId ? { where: { schoolId: user.schoolId }, select: { enabled: true } } : false,
+    },
+  })
+  if (!course) throw new Error('COURSE_NOT_FOUND')
+  if (!course.published) throw new Error('FORBIDDEN')
+  if (user.schoolId && course.schoolAccess[0]?.enabled === false) throw new Error('FORBIDDEN')
+  return course
+}
+
 export async function requireAvailableCourse(user: { schoolId: string | null; role: string }, courseId: string) {
   const course = await prisma.course.findUnique({
     where: { id: courseId },

@@ -221,9 +221,9 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
               </div>
             </form>
 
-            <div>
+            <div style={{ alignSelf: 'stretch', display: 'flex', flexDirection: 'column' }}>
               {session?.user?.role === 'ATLAS_ADMIN' && <div className="panel" style={{ marginBottom: 16 }}>
-                <h3 style={{ margin: '0 0 12px', fontSize: 14 }}>School access <span className="badge badge-pending">{course.audience === 'PARENT' ? 'Parents' : 'Staff'}</span></h3>
+                <h3 style={{ margin: '0 0 12px', fontSize: 14 }}>School access <span className={`badge ${course.audience === 'PARENT' ? 'badge-parent' : 'badge-staff'}`}>{course.audience === 'PARENT' ? 'Parents' : 'Staff'}</span></h3>
                 <p className="muted" style={{ fontSize: 12 }}>{course.audience === 'PARENT' ? "Select which schools' parents can access this course. Selecting all schools makes it available to every school's parents." : 'All active schools is the default. Selecting fewer schools changes this course to selected-school availability; selecting all restores the global default.'}</p>
                 {schools.length > 0 ? (
                   <>
@@ -245,7 +245,7 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
                 )}
               </div>}
 
-              <div className="panel">
+              <div className="panel" style={{ marginTop: 'auto' }}>
                 <h3 style={{ margin: '0 0 12px', fontSize: 14 }}>Stats</h3>
                 <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <span>Enrollments: <strong>{course.progressCount}</strong></span>

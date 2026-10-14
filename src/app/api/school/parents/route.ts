@@ -12,12 +12,37 @@ export async function GET(request: Request) {
       prisma.school.findUnique({ where: { id: schoolId }, select: { name: true, parentRegistrationToken: true, parentRegistrationEnabled: true } }),
       prisma.user.findMany({ where: { schoolId, role: 'PARENT' }, select: { id: true, name: true, email: true, status: true, lastActiveAt: true, createdAt: true }, orderBy: { createdAt: 'desc' } }),
       prisma.schoolCourse.findMany({ where: { schoolId }, select: { courseId: true, enabled: true } }),
-      prisma.course.findMany({ where: { audience: 'PARENT', published: true }, select: { id: true, title: true, durationMinutes: true, description: true }, orderBy: { createdAt: 'desc' } }),
+      prisma.course.findMany({
+        where: { audience: 'PARENT', published: true },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          coverImageUrl: true,
+          durationMinutes: true,
+          durationSeconds: true,
+          section: { select: { name: true } },
+          modules: { select: { lessons: { where: { published: true }, select: { id: true } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
     ])
     if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 })
 
     const accessByCourse = new Map(courseAccess.map((access) => [access.courseId, access.enabled]))
-    const courses = parentCourses.filter((course) => accessByCourse.get(course.id) ?? true)
+    const courses = parentCourses
+      .filter((course) => accessByCourse.get(course.id) ?? true)
+      .map((course) => ({
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        coverImageUrl: course.coverImageUrl,
+        durationMinutes: course.durationMinutes,
+        durationSeconds: course.durationSeconds,
+        label: course.section?.name ?? 'Course',
+        moduleCount: course.modules.length,
+        lessonCount: course.modules.reduce((total, module) => total + module.lessons.length, 0),
+      }))
 
     return NextResponse.json({
       schoolName: school.name,

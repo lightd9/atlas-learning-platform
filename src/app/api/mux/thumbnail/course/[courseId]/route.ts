@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAvailableCourse, requireSchoolUser } from '@/lib/access'
+import { requireAvailableCourse, requireSchoolUser, requireSchoolVisibleCourse } from '@/lib/access'
 import { generateThumbnailUrl } from '@/lib/mux'
 import { prisma } from '@/lib/prisma'
 
@@ -10,7 +10,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cou
     if (user.role === 'INSTRUCTOR') {
       const owned = await prisma.course.findFirst({ where: { id: courseId, createdById: user.id }, select: { id: true } })
       if (!owned) return new NextResponse(null, { status: 403 })
-    } else if (user.role !== 'ATLAS_ADMIN') {
+    } else if (user.role === 'ATLAS_ADMIN') {
+      // Atlas Admins can load any course thumbnail.
+    } else if (user.role === 'HEADTEACHER') {
+      // Headteachers can preview thumbnails for any published course available
+      // to their school, including parent-audience courses.
+      await requireSchoolVisibleCourse(user, courseId)
+    } else {
       await requireAvailableCourse(user, courseId)
     }
 

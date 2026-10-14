@@ -108,7 +108,7 @@ export default function AdminSchoolParentsPage({ params }: { params: Promise<{ s
       </div>
 
       <section className="panel" style={{ marginBottom: 24 }}>
-        <div className="panel-head"><div><p className="eyebrow">Registration link</p><h2 style={{ margin: 0 }}>Parent sign-up link</h2><p className="muted">Share this unique link with {schoolName || 'the school'}. Parents who use it are added to this school only.</p></div></div>
+        <div className="panel-head"><div><h2 style={{ margin: 0 }}>Parent sign-up link</h2><p className="muted">Share this unique link with {schoolName || 'the school'}. Parents who use it are added to this school only.</p></div></div>
         {!data?.link.token ? (
           <button className="primary-button" onClick={() => generateLink(false)} disabled={linkBusy}><Link2 size={16} /> {linkBusy ? 'Generating...' : 'Generate registration link'}</button>
         ) : (
@@ -118,7 +118,7 @@ export default function AdminSchoolParentsPage({ params }: { params: Promise<{ s
               <button className="secondary-button" onClick={copyLink}><Copy size={16} /> Copy</button>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span className={`badge ${data.link.enabled ? 'badge-active' : 'badge-inactive'}`}>{data.link.enabled ? 'Enabled' : 'Disabled'}</span>
+              <span className={`badge ${data.link.enabled ? 'badge-parent' : 'badge-inactive'}`}>{data.link.enabled ? 'Enabled' : 'Disabled'}</span>
               <button className="secondary-button" onClick={() => generateLink(true)} disabled={linkBusy}><RefreshCw size={16} /> Regenerate</button>
               <button className="secondary-button" onClick={toggleEnabled} disabled={linkBusy}>{data.link.enabled ? 'Disable link' : 'Enable link'}</button>
             </div>
@@ -127,14 +127,14 @@ export default function AdminSchoolParentsPage({ params }: { params: Promise<{ s
       </section>
 
       <section className="panel" style={{ marginBottom: 24 }}>
-        <div className="panel-head"><div><p className="eyebrow">Registered parents</p><h2 style={{ margin: 0 }}>{data?.parents.length ?? 0} parent{(data?.parents.length ?? 0) === 1 ? '' : 's'}</h2></div></div>
+        <div className="panel-head"><div><p className="eyebrow">Registered parents</p></div></div>
         {!data || data.parents.length === 0
           ? <p className="muted">No parents have registered yet.</p>
-          : <div className="table-wrap"><table className="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Joined</th><th>Last active</th></tr></thead><tbody>{data.parents.map((parent) => <tr key={parent.id}><td><strong>{parent.name}</strong></td><td>{parent.email}</td><td><span className={`badge ${parent.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}`}>{parent.status}</span></td><td>{new Date(parent.createdAt).toLocaleDateString('en-GB')}</td><td>{parent.lastActiveAt ? new Date(parent.lastActiveAt).toLocaleDateString('en-GB') : '—'}</td></tr>)}</tbody></table></div>}
+                      : <div className="table-wrap"><table className="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Joined</th><th>Last active</th></tr></thead><tbody>{data.parents.map((parent) => <tr key={parent.id}><td><strong>{parent.name}</strong></td><td>{parent.email}</td><td><span className={`badge ${parent.status === 'ACTIVE' ? 'badge-parent' : 'badge-inactive'}`}>{parent.status}</span></td><td>{new Date(parent.createdAt).toLocaleDateString('en-GB')}</td><td>{parent.lastActiveAt ? new Date(parent.lastActiveAt).toLocaleDateString('en-GB') : '—'}</td></tr>)}</tbody></table></div>}
       </section>
 
       <section className="panel">
-        <div className="panel-head"><div><p className="eyebrow">Parent courses</p><h2>Courses available to {schoolName || 'this school'}&apos;s parents</h2><p className="muted">Only parent-audience courses are listed. Select which ones this school&apos;s parents can access.</p></div></div>
+        <div className="panel-head"><div><h2>Courses available to {schoolName || 'this school'}&apos;s parents</h2><p className="muted">Only parent-audience courses are listed. Select which ones this school&apos;s parents can access.</p></div></div>
         {!data || data.courses.length === 0
           ? <p className="muted">No parent courses have been created yet.</p>
           : <>
