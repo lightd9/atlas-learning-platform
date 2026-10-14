@@ -227,7 +227,6 @@ export default function AdminCoursesPage() {
             <thead>
               <tr>
                 <th>Title</th>
-                <th>Slug</th>
                 <th>Duration</th>
                 <th>Status</th>
                 <th>Audience</th>
@@ -240,7 +239,6 @@ export default function AdminCoursesPage() {
               {filtered.map((course) => (
                 <tr key={course.id}>
                   <td><strong>{course.title}</strong></td>
-                  <td style={{ color: 'var(--muted)' }}>{course.slug}</td>
                   <td>{formatClock(courseTotalSeconds(course))}</td>
                   <td><span className={`badge ${course.status === 'PUBLISHED' ? 'badge-active' : course.status === 'REVIEW' ? 'badge-pending' : 'badge-inactive'}`}>{course.status === 'REVIEW' ? 'Ready for review' : course.status ?? (course.published ? 'Published' : 'Draft')}</span></td>
                   <td><span className={`badge ${course.audience === 'PARENT' ? 'badge-parent' : 'badge-staff'}`}>{course.audience === 'PARENT' ? 'Parents' : 'Staff'}</span></td>
