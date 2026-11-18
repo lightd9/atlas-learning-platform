@@ -26,7 +26,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cou
         muxPlaybackId: true,
         section: { select: { id: true, name: true, slug: true, description: true, sortOrder: true } },
         modules: {
-          where: { lessons: { some: { published: true } } },
+          where: { archived: false, lessons: { some: { published: true, archived: false } } },
           orderBy: { sortOrder: 'asc' },
           select: {
             id: true,
@@ -34,7 +34,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cou
             description: true,
             sortOrder: true,
             lessons: {
-              where: { published: true },
+              where: { published: true, archived: false },
               orderBy: { sortOrder: 'asc' },
               select: { id: true, title: true, description: true, durationSeconds: true, muxPlaybackId: true, sortOrder: true },
             },

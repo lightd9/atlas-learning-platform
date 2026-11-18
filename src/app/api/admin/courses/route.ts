@@ -3,6 +3,8 @@ import { requireCourseEditor } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { auditLog } from '@/lib/audit'
+import { apiErrorResponse } from '@/lib/api-errors'
+import type { Prisma } from '@prisma/client'
 
 const lessonSchema = z.object({
   title: z.string().min(1).max(200),
@@ -43,11 +45,18 @@ const courseSchema = z.object({
   modules: z.array(moduleSchema).default([]),
 })
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const editor = await requireCourseEditor()
+    const params = new URL(request.url).searchParams
+    const query = z.object({ page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(12), status: z.enum(['DRAFT', 'REVIEW', 'PUBLISHED', 'ARCHIVED']).optional() }).safeParse(Object.fromEntries(params))
+    if (!query.success) return NextResponse.json({ error: 'Invalid course filters or pagination.' }, { status: 400 })
+    const paginated = params.has('page') || params.has('pageSize')
+    const { page, pageSize, status } = query.data
+    const where: Prisma.CourseWhereInput = { ...(editor.role === 'INSTRUCTOR' ? { createdById: editor.id } : {}), ...(status ? { status, ...(status === 'PUBLISHED' ? { published: true } : {}) } : {}) }
     const [courses, totalActiveSchools] = await Promise.all([prisma.course.findMany({
-      where: editor.role === 'INSTRUCTOR' ? { createdById: editor.id } : undefined,
+      where,
+      ...(paginated ? { skip: (page - 1) * pageSize, take: pageSize } : {}),
       include: {
         _count: { select: { progress: true, modules: true } },
         schoolAccess: { select: { enabled: true } },
@@ -75,10 +84,10 @@ export async function GET() {
       createdAt: c.createdAt.toISOString(),
       createdById: c.createdById,
     }))
-    return NextResponse.json({ courses: data })
+    const total = paginated ? await prisma.course.count({ where }) : data.length
+    return NextResponse.json({ courses: data, ...(paginated ? { pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } } : {}) })
   } catch (error) {
-    const message = error instanceof Error && error.message === 'UNAUTHORIZED' ? 'Unauthorized' : 'Unable to load courses'
-    return NextResponse.json({ error: message }, { status: message === 'Unauthorized' ? 401 : 403 })
+    return apiErrorResponse(error, 'Unable to load courses')
   }
 }
 

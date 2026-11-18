@@ -6,7 +6,7 @@ import { Bell, ChevronDown, Menu, Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Logo from "@/components/Logo";
 import CookieConsent from "@/components/CookieConsent";
-import { categoryId, publicCourses, publicCourseCategories } from "@/data/publicCourses";
+import { categoryId, publicCourseFromPlacement, type PublicCourse, type PublicHomeCourse } from "@/data/publicCourses";
 
 export default function PublicNavbar() {
   const router = useRouter();
@@ -15,14 +15,15 @@ export default function PublicNavbar() {
   const [mobileExploreOpen, setMobileExploreOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
-  const [searchCourses, setSearchCourses] = useState(publicCourses);
+  const [searchCourses, setSearchCourses] = useState<PublicCourse[]>([]);
+  const publicCourseCategories = [...new Set(searchCourses.map((course) => course.category))];
   const exploreRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/api/public/home-content', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((content) => {
       const explore = content?.EXPLORE ?? [];
-      if (explore.length) setSearchCourses([...publicCourses, ...explore.filter((course: any) => !publicCourses.some((fallback) => fallback.title === course.title)).map((course: any) => ({ title: course.title, category: course.section?.name ?? 'Course', duration: `${course.durationMinutes ?? 0} min`, lessons: 0, status: 'available' as const, image: course.coverImageUrl || `/api/public/course-thumbnail/${course.id}` }))]);
+      setSearchCourses(explore.map((course: PublicHomeCourse) => publicCourseFromPlacement(course)));
     }).catch(() => {});
   }, []);
 

@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { canLearnerAccessCourse } from '@/lib/course-access-policy'
 
 export async function requireSchoolUser() {
   const session = await auth()
@@ -104,12 +105,13 @@ export async function requireSchoolVisibleCourse(user: { schoolId: string | null
     select: {
       id: true,
       published: true,
+      status: true,
       audience: true,
       schoolAccess: user.schoolId ? { where: { schoolId: user.schoolId }, select: { enabled: true } } : false,
     },
   })
   if (!course) throw new Error('COURSE_NOT_FOUND')
-  if (!course.published) throw new Error('FORBIDDEN')
+  if (!course.published || course.status !== 'PUBLISHED') throw new Error('FORBIDDEN')
   if (user.schoolId && course.schoolAccess[0]?.enabled === false) throw new Error('FORBIDDEN')
   return course
 }
@@ -120,13 +122,22 @@ export async function requireAvailableCourse(user: { schoolId: string | null; ro
     select: {
       id: true,
       published: true,
+      status: true,
       audience: true,
       schoolAccess: user.schoolId ? { where: { schoolId: user.schoolId }, select: { enabled: true } } : false,
     },
   })
   if (!course) throw new Error('COURSE_NOT_FOUND')
-  if (!course.published) throw new Error('FORBIDDEN')
-  if (course.audience !== audienceForRole(user.role)) throw new Error('FORBIDDEN')
-  if (user.schoolId && course.schoolAccess[0]?.enabled === false) throw new Error('FORBIDDEN')
+
+  const accessible = canLearnerAccessCourse(
+    { role: user.role, schoolId: user.schoolId },
+    {
+      audience: course.audience,
+      published: course.published,
+      status: course.status,
+      schoolAccessEnabled: user.schoolId ? course.schoolAccess[0]?.enabled : undefined,
+    },
+  )
+  if (!accessible) throw new Error('FORBIDDEN')
   return course
 }

@@ -7,7 +7,7 @@ import AccountShell from '@/components/AccountShell'
 
 const articles = [
   { title: 'How do I start a course?', text: 'Open My learning or Explore, choose a course, then select a lesson. Your video progress is saved automatically while you watch.', icon: <BookOpen size={18} /> },
-  { title: 'How do teacher invitations work?', text: 'Headteachers can invite teachers individually or upload a CSV file. Invitations expire after seven days and can be resent while pending or expired.', icon: <Users size={18} /> },
+  { title: 'How do teacher invitations work?', text: 'Headteachers can invite teachers individually or upload a CSV file. Each setup link includes its expiry date. Resend pending or expired invitations individually, select a group, or use Resend all pending above the invitation table.', icon: <Users size={18} /> },
   { title: 'How is progress tracked?', text: 'Atlas records watch time and marks lessons complete automatically when the completion threshold is reached.', icon: <ShieldCheck size={18} /> },
 ]
 

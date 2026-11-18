@@ -116,7 +116,7 @@ Authenticated.
 
 ### `GET /api/courses`
 
-Authenticated. Returns published courses available to the user's school, including modules, lessons, progress, and optional resources.
+Authenticated. Returns published courses available to the user's school, including active modules and lessons, saved progress, and optional resources. Staff can access both `STAFF` (Staff only) and `PARENT` (Parents + staff) audiences. Parents can access only `PARENT`. Explicit disabled school access takes precedence for either audience.
 
 ```json
 { "courses": [] }
@@ -128,7 +128,7 @@ Authenticated. Returns one published course after school-access validation. Opti
 
 ### `POST /api/progress`
 
-Authenticated. Saves course or lesson progress.
+Teacher, headteacher, or parent. Saves validated course or lesson progress. Editor previews do not record learner progress.
 
 ```json
 {
@@ -137,19 +137,23 @@ Authenticated. Saves course or lesson progress.
   "watchedSeconds": 120,
   "durationSeconds": 600,
   "watchedRanges": [
-    { "start": 0, "end": 75 },
-    { "start": 90, "end": 135 }
-  ]
+    { "start": 0, "end": 120 }
+  ],
+  "lastPositionSeconds": 120
 }
 ```
 
-`lessonId` and `watchedRanges` are optional. At most 500 watched ranges are accepted.
+`lessonId`, `watchedRanges`, and `lastPositionSeconds` are optional. At most 500 watched ranges are accepted. The server derives credited totals and duration; legacy `watchedSeconds` and `durationSeconds` fields cannot grant completion. A save may extend existing coverage only within elapsed server time, capped at 60 seconds; the initial session save grants no new viewing time. Disjoint new ranges are rejected. The player starts the session on playback, saves periodically and on pause/exit, and permits seeking only within watched coverage. Admin/instructor previews retain unrestricted seeking.
+
+Lesson-based course completion is recomputed from published, active lessons. Posting course-level ranges cannot bypass lesson completion. Both returned progress objects serialize `watchedRanges` as arrays, and saved resume positions are clamped to credited coverage. Unknown server video duration returns `503` rather than trusting client metadata.
 
 ## Course administration
 
 ### `GET /api/admin/courses`
 
 Course editor. Atlas Admins receive all courses; instructors receive only courses they own.
+
+Optional `page`, `pageSize` (1–100), and `status` filters are supported. Supplying pagination returns `pagination: { page, pageSize, total, totalPages }`; the default course-management list remains unpaginated. The admin overview requests published courses in pages of 12.
 
 ### `POST /api/admin/courses`
 
@@ -438,7 +442,9 @@ School manager; Atlas Admins may target a school, while headteachers are scoped 
 | `GET` | `/api/invitations` | List invitations |
 | `POST` | `/api/invitations` | Create 1–500 invitations |
 | `POST` | `/api/invitations/:id` | Resend an invitation |
-| `DELETE` | `/api/invitations/:id` | Revoke an invitation |
+| `POST` | `/api/invitations/resend` | Resend a selection of invitations |
+| `PATCH` | `/api/invitations/:id` | Revoke an invitation while preserving the record |
+| `DELETE` | `/api/invitations/:id` | Permanently delete an invitation |
 | `POST` | `/api/invitations/import-csv` | Import teacher invitations from CSV |
 | `GET` | `/api/invitations/template` | Download the CSV template |
 
@@ -455,6 +461,18 @@ Create body:
 ```
 
 CSV import uses `multipart/form-data` with `file` and optional `schoolId`. Files must be `.csv` and no larger than 5 MB.
+
+Invitation links default to 30 days. `INVITATION_TTL_DAYS` accepts an integer from 1–365; invalid values use 30. Emails describe the configured expiry automatically. Existing links keep their expiry until resent.
+
+Bulk resend accepts `{ "ids": ["invitation-id"], "schoolId": "optional-school-id" }` with 1–500 IDs. The UI sends batches of 25. The entire selection is checked for school scope before delivery; mixed-school selections by a headteacher return `403` without sending any email. Accepted/revoked invitations, existing accounts, and links sent within the one-hour cooldown are skipped. Responses include per-invitation `results`, a `summary` of `total`, `sent`, `skipped`, and `failed`, and new `setupLinks` for successful sends. Partial email failures do not undo successful sends. Failed delivery restores the previous token, expiry, status and cooldown timestamp. Successful resends are audited.
+
+The public self-service resend endpoint uses the same safe delivery and cooldown while retaining a neutral response to avoid revealing whether an invitation or account exists.
+
+## Homepage content
+
+`GET /api/public/home-content` returns active database placements grouped by homepage section. Published courses from either audience can be placed publicly; course cards expose metadata while video access remains controlled by role and school. Mux playback IDs are excluded. The homepage, Explore and navbar search use these placements without a hard-coded catalog fallback. Uploaded course covers fall back to the course's Mux thumbnail, then the default cover.
+
+`GET|POST|PATCH|DELETE /api/admin/home-content` requires homepage-management permission. Recommended allows 8 active courses; Unlock allows 12; Top courses and Explore have no section limit. Homepage grids wrap so all configured courses are visible. Deleting a course cascades its placements; archiving removes them in the course transaction. Unpublished courses do not appear publicly or consume active visible slots.
 
 ## Analytics, notifications, and health
 
@@ -473,6 +491,8 @@ CSV import uses `multipart/form-data` with `file` and optional `schoolId`. Files
 
 ```env
 DATABASE_URL="postgresql://..."
+DATABASE_URL_UNPOOLED="postgresql://..."
+INVITATION_TTL_DAYS="30"
 AUTH_URL="https://atlas.example.com"
 AUTH_SECRET="..."
 MUX_TOKEN_ID="..."

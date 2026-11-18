@@ -6,6 +6,7 @@ import { ArrowLeft, CheckCircle2, Clock3, Download, FileText, Play, ShieldCheck,
 import AuthShell from '@/components/AuthShell'
 import VideoPlayer from '@/components/VideoPlayer'
 import { apiErrorMessage } from '@/lib/api-response'
+import { savedWatchedRanges } from '@/lib/progress-credit'
 import type { ApiCourse, ApiLesson } from '@/types/api'
 
 const tones = ['blue', 'mint', 'lilac', 'peach', 'violet']
@@ -45,12 +46,13 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
   const hasPlaybackId = Boolean(activePlaybackId)
   const lessonProgress = selectedLesson?.progress?.[0]
   const courseProgress = course?.progress?.[0]
+  const initialWatchedRanges = savedWatchedRanges(selectedLesson ? lessonProgress : courseProgress)
   const totalMins = course?.durationMinutes ?? 0
   const progressPercent = courseProgress ? Math.round(Number(courseProgress.percentComplete)) : 0
 
   const handleProgress = useCallback(async (watchedSeconds: number, durationSeconds: number, watchedRanges: { start: number; end: number }[] = [], lastPositionSeconds = watchedSeconds) => {
     try {
-      const response = await fetch('/api/progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ courseId, ...(selectedLesson ? { lessonId: selectedLesson.id } : {}), watchedSeconds, durationSeconds: durationSeconds || selectedLesson?.durationSeconds || course?.durationSeconds || (course?.durationMinutes ? course.durationMinutes * 60 : 1), watchedRanges, lastPositionSeconds }) })
+      const response = await fetch('/api/progress', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ courseId, ...(selectedLesson ? { lessonId: selectedLesson.id } : {}), watchedSeconds, durationSeconds: durationSeconds || selectedLesson?.durationSeconds || course?.durationSeconds || (course?.durationMinutes ? course.durationMinutes * 60 : 1), watchedRanges, lastPositionSeconds }) })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.error ?? 'Unable to save your progress.')
       if (data.progress) {
@@ -78,7 +80,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ courseI
     <Link className="back-button" href="/courses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 16 }}><ArrowLeft size={16} /> Back to courses</Link>
     {loading ? <div style={{ padding: 40, opacity: .4 }}>Loading course...</div> : !course ? <div role="alert" style={{ padding: 40 }}>{loadError || 'Unable to load course.'}</div> : <>
       <div className="detail-hero"><div><span className={`tag tag-${tones[0]}`}>{course.section?.name ?? 'Course'}</span><h1>{course.title}</h1><p>{course.description} Learn through structured modules and focused video lessons.</p><div className="detail-meta"><span><Clock3 size={16} /> {formatDuration(totalMins * 60)}</span><span><Video size={16} /> {lessons.length} {lessons.length === 1 ? 'Lesson' : 'Lessons'}</span><span><ShieldCheck size={16} /> Designed for schools</span>{progressPercent > 0 && <span><CheckCircle2 size={16} /> {progressPercent}% complete</span>}</div></div><div className={`detail-art ${tones[0]}`}><img src={course.coverImageUrl || `/api/public/course-thumbnail/${course.id}`} alt={`${course.title} thumbnail`} onError={(event) => { const fallback = `/api/public/course-thumbnail/${course.id}`; if (event.currentTarget.src !== new URL(fallback, window.location.origin).href) event.currentTarget.src = fallback }} /></div></div>
-      <div className="lesson-layout"><div>{hasPlaybackId ? <VideoPlayer key={`${courseId}-${selectedLesson?.id ?? 'course'}-${activePlaybackId}`} playbackId={activePlaybackId} courseId={courseId} lessonId={selectedLesson?.id} initialPosition={selectedLesson ? (lessonProgress?.lastPositionSeconds ?? lessonProgress?.watchedSeconds ?? 0) : (courseProgress?.lastPositionSeconds ?? courseProgress?.watchedSeconds ?? 0)} onProgress={handleProgress} /> : <div className="video-stage"><div className="video-placeholder"><div className="play-large"><Play size={26} fill="currentColor" /></div><span>{selectedLesson?.title ?? 'No video connected'}</span><small>{selectedLesson ? 'Mux video is not connected for this lesson yet.' : 'This course has no video yet.'}</small></div></div>}
+      <div className="lesson-layout"><div>{hasPlaybackId ? <VideoPlayer key={`${courseId}-${selectedLesson?.id ?? 'course'}-${activePlaybackId}`} playbackId={activePlaybackId} courseId={courseId} lessonId={selectedLesson?.id} initialPosition={selectedLesson ? (lessonProgress?.lastPositionSeconds ?? lessonProgress?.watchedSeconds ?? 0) : (courseProgress?.lastPositionSeconds ?? courseProgress?.watchedSeconds ?? 0)} initialWatchedRanges={initialWatchedRanges} onProgress={handleProgress} /> : <div className="video-stage"><div className="video-placeholder"><div className="play-large"><Play size={26} fill="currentColor" /></div><span>{selectedLesson?.title ?? 'No video connected'}</span><small>{selectedLesson ? 'Mux video is not connected for this lesson yet.' : 'This course has no video yet.'}</small></div></div>}
         {progressSaveError && <p role="alert" className="form-error" style={{ marginTop: 12 }}>Progress was not saved: {progressSaveError}</p>}
         {(Boolean(course.notes) || (course.resources?.length ?? 0) > 0) && <div className="panel course-materials" style={{ marginTop: 18 }}>
           {course.notes && <div className="course-notes"><div className="material-heading"><FileText size={18} /><h2>Notes</h2></div><p>{course.notes}</p></div>}
@@ -97,3 +99,10 @@ function LessonButton({ lesson, index, selected, onClick }: { lesson: ApiLesson;
 }
 
 function formatDuration(seconds: number) { const mins = Math.floor(seconds / 60); return mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)}h ${mins % 60 ? `${mins % 60}m` : ''}` }
+
+function parseSavedRanges(ranges: { start: number; end: number }[] | undefined) {
+  if (!Array.isArray(ranges)) return []
+  return ranges
+    .filter((range) => Number.isFinite(range?.start) && Number.isFinite(range?.end) && range.end > range.start)
+    .map((range) => ({ start: Math.max(0, range.start), end: Math.max(0, range.end) }))
+}

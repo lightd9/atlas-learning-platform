@@ -13,7 +13,7 @@ export async function GET(request: Request) {
       prisma.user.findMany({ where: { schoolId, role: 'PARENT' }, select: { id: true, name: true, email: true, status: true, lastActiveAt: true, createdAt: true }, orderBy: { createdAt: 'desc' } }),
       prisma.schoolCourse.findMany({ where: { schoolId }, select: { courseId: true, enabled: true } }),
       prisma.course.findMany({
-        where: { audience: 'PARENT', published: true },
+        where: { audience: 'PARENT', published: true, status: 'PUBLISHED' },
         select: {
           id: true,
           title: true,
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
           durationMinutes: true,
           durationSeconds: true,
           section: { select: { name: true } },
-          modules: { select: { lessons: { where: { published: true }, select: { id: true } } } },
+          modules: { where: { archived: false }, select: { lessons: { where: { published: true, archived: false }, select: { id: true } } } },
         },
         orderBy: { createdAt: 'desc' },
       }),

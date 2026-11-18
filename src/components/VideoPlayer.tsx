@@ -3,17 +3,20 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Play, Pause, Maximize2, Minimize2, Loader2, AlertCircle, Rewind, FastForward } from 'lucide-react'
 import Hls from 'hls.js'
+import { clampSeekTarget } from '@/lib/progress-credit'
 
 interface VideoPlayerProps {
   playbackId: string
   courseId: string
   lessonId?: string
   initialPosition?: number
+  initialWatchedRanges?: { start: number; end: number }[]
   onProgress?: (watchedSeconds: number, durationSeconds: number, watchedRanges: { start: number; end: number }[], lastPositionSeconds: number) => void
   onComplete?: () => void
+  restrictSeeking?: boolean
 }
 
-export default function VideoPlayer({ playbackId, courseId, lessonId, initialPosition = 0, onProgress, onComplete }: VideoPlayerProps) {
+export default function VideoPlayer({ playbackId, courseId, lessonId, initialPosition = 0, initialWatchedRanges = [], onProgress, onComplete, restrictSeeking = true }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -22,10 +25,15 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
   const [duration, setDuration] = useState(0)
   const [fullscreen, setFullscreen] = useState(false)
   const [src, setSrc] = useState('')
+  const [seekNotice, setSeekNotice] = useState('')
   const saveInterval = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   const lastSaveAtRef = useRef(0)
   const lastObservedTimeRef = useRef(0)
+  const lastDurationRef = useRef(0)
+  const lastObservationAtRef = useRef(Date.now())
   const watchedRangesRef = useRef<{ start: number; end: number }[]>([])
+  const initialWatchedRangesRef = useRef(initialWatchedRanges)
+  initialWatchedRangesRef.current = initialWatchedRanges
   const seekingRef = useRef(false)
   const onProgressRef = useRef(onProgress)
   const hideControlsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -71,10 +79,6 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
     const controller = new AbortController()
     const currentVideo = videoRef.current
     if (currentVideo) {
-      if (Number.isFinite(currentVideo.duration) && currentVideo.duration > 0) {
-        const covered = watchedRangesRef.current.reduce((total, range) => total + range.end - range.start, 0)
-        onProgressRef.current?.(Math.floor(covered), Math.floor(currentVideo.duration), watchedRangesRef.current.map((range) => ({ ...range })), Math.floor(currentVideo.currentTime))
-      }
       currentVideo.pause()
       currentVideo.removeAttribute('src')
       currentVideo.load()
@@ -86,11 +90,17 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
     setCurrentTime(0)
     setDuration(0)
     lastObservedTimeRef.current = 0
-    watchedRangesRef.current = []
+    lastDurationRef.current = 0
+    lastObservationAtRef.current = Date.now()
+    lastSaveAtRef.current = 0
+    setSeekNotice('')
+    // Restore saved coverage for this source so progress saves remain
+    // cumulative across reloads and lesson switches.
+    watchedRangesRef.current = initialWatchedRangesRef.current.map((range) => ({ ...range }))
 
     async function loadStream() {
       try {
-        const res = await fetch(`/api/mux/playback/${playbackId}`, { signal: controller.signal })
+        const res = await fetch(`/api/mux/playback/${playbackId}?courseId=${encodeURIComponent(courseId)}`, { signal: controller.signal })
         if (!res.ok) { setError('Unable to load video'); setLoading(false); return }
         const data = await res.json()
         setSrc(data.url)
@@ -102,7 +112,7 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
     }
     loadStream()
     return () => controller.abort()
-  }, [playbackId, lessonId])
+  }, [playbackId, courseId, lessonId])
 
   useEffect(() => {
     if (!videoRef.current || !src) return
@@ -131,7 +141,7 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
     }
 
     if (initialPosition > 0 && video.duration) {
-      try { video.currentTime = Math.min(initialPosition, video.duration) } catch {}
+      try { video.currentTime = restrictSeeking ? clampSeekTarget(initialPosition, watchedRangesRef.current, video.duration) : Math.min(initialPosition, video.duration) } catch {}
     }
     return () => {
       hls?.destroy()
@@ -171,10 +181,20 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
         saveProgress(video.currentTime, video.duration)
       }
     }, 10000)
+    function saveBeforeLeaving() {
+      const video = videoRef.current
+      if (video && Number.isFinite(video.duration) && video.duration > 0) saveProgress(video.currentTime, video.duration, true)
+    }
+    window.addEventListener('pagehide', saveBeforeLeaving)
     return () => {
       clearInterval(saveInterval.current)
+      window.removeEventListener('pagehide', saveBeforeLeaving)
       const video = videoRef.current
-      if (video && video.duration) saveProgress(video.currentTime, video.duration, true)
+      // React clears the video ref before passive cleanup when a lesson is
+      // replaced. Keep the last observed values so its final progress is saved.
+      const duration = video?.duration ?? lastDurationRef.current
+      if (Number.isFinite(duration) && duration > 0) saveProgress(video?.currentTime ?? lastObservedTimeRef.current, duration, true)
+      clearTimeout(hideControlsTimerRef.current)
     }
   }, [saveProgress])
 
@@ -184,28 +204,35 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
     const time = video.currentTime
     if (!seekingRef.current && !video.paused) {
       const delta = time - lastObservedTimeRef.current
-      // Only count normal forward playback. Large jumps are seeks and are
-      // deliberately excluded from watched coverage.
-      if (delta > 0 && delta <= 3) addWatchedRange(lastObservedTimeRef.current, time)
+      const elapsed = Math.max(0, (Date.now() - lastObservationAtRef.current) / 1000)
+      const normalAdvance = elapsed * (video.playbackRate || 1) + 0.75
+      if (delta > normalAdvance && restrictSeeking) { seekTo(time); return }
+      if (delta > 0 && delta <= normalAdvance) addWatchedRange(lastObservedTimeRef.current, time)
     }
     lastObservedTimeRef.current = time
+    lastObservationAtRef.current = Date.now()
     setCurrentTime(time)
     setDuration(video.duration)
+    if (Number.isFinite(video.duration)) lastDurationRef.current = video.duration
   }
 
   function handleLoadedMetadata() {
     if (!videoRef.current) return
     setDuration(videoRef.current.duration)
+    if (Number.isFinite(videoRef.current.duration)) lastDurationRef.current = videoRef.current.duration
     if (initialPosition > 0) {
-      videoRef.current.currentTime = Math.min(initialPosition, videoRef.current.duration)
+      videoRef.current.currentTime = restrictSeeking ? clampSeekTarget(initialPosition, watchedRangesRef.current, videoRef.current.duration) : Math.min(initialPosition, videoRef.current.duration)
     }
     lastObservedTimeRef.current = videoRef.current.currentTime
+    lastObservationAtRef.current = Date.now()
   }
 
   function handleEnded() {
     setPlaying(false)
     if (videoRef.current) {
-      addWatchedRange(lastObservedTimeRef.current, videoRef.current.duration)
+      const remaining = videoRef.current.duration - lastObservedTimeRef.current
+      const elapsed = (Date.now() - lastObservationAtRef.current) / 1000 + 0.75
+      if (remaining > 0 && remaining <= elapsed * (videoRef.current.playbackRate || 1)) addWatchedRange(lastObservedTimeRef.current, videoRef.current.duration)
       lastObservedTimeRef.current = videoRef.current.duration
       saveProgress(videoRef.current.duration, videoRef.current.duration, true)
     }
@@ -215,9 +242,9 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
   function togglePlay() {
     if (!videoRef.current) return
     if (videoRef.current.paused) {
-      videoRef.current.play()
-      setPlaying(true)
+      videoRef.current.play().catch(() => setError('Unable to start playback. Please try again.'))
       lastObservedTimeRef.current = videoRef.current.currentTime
+      lastObservationAtRef.current = Date.now()
     } else {
       videoRef.current.pause()
       setPlaying(false)
@@ -265,9 +292,18 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
     }
   }
 
-  function seekBy(seconds: number) {
+  function seekTo(target: number) {
     if (!videoRef.current || !Number.isFinite(videoRef.current.duration)) return
-    videoRef.current.currentTime = Math.max(0, Math.min(videoRef.current.duration, videoRef.current.currentTime + seconds))
+    const requested = Math.max(0, Math.min(videoRef.current.duration, target))
+    const allowed = restrictSeeking ? clampSeekTarget(requested, watchedRangesRef.current, videoRef.current.duration) : requested
+    if (requested > allowed + 0.05) setSeekNotice('Watch this part of the video before skipping ahead.')
+    videoRef.current.currentTime = allowed
+    setCurrentTime(allowed)
+    revealControls()
+  }
+
+  function seekBy(seconds: number) {
+    if (videoRef.current) seekTo(videoRef.current.currentTime + seconds)
   }
 
   function handlePlayerKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
@@ -285,10 +321,22 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
     }
   }
 
-  function handleSeeking() { seekingRef.current = true }
+  function handleSeeking() {
+    seekingRef.current = true
+    const video = videoRef.current
+    if (video && restrictSeeking && Number.isFinite(video.duration)) {
+      const allowed = clampSeekTarget(video.currentTime, watchedRangesRef.current, video.duration)
+      if (video.currentTime > allowed + 0.05) {
+        video.currentTime = allowed
+        setSeekNotice('Watch this part of the video before skipping ahead.')
+      }
+    }
+  }
   function handleSeeked() {
     if (!videoRef.current) return
     lastObservedTimeRef.current = videoRef.current.currentTime
+    lastObservationAtRef.current = Date.now()
+    setCurrentTime(videoRef.current.currentTime)
     seekingRef.current = false
   }
 
@@ -322,7 +370,7 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
   const controlsVisible = controlsShown
 
   return (
-    <div className="video-stage" tabIndex={0} role="region" aria-label="Video player" onKeyDown={handlePlayerKeyDown} onMouseMove={() => { if (!controlsShown) revealControls() }} style={{ position: 'relative', overflow: 'hidden', background: '#000', cursor: fullscreen && !controlsShown ? 'none' : 'default' }}>
+    <div className="video-stage" tabIndex={0} role="region" aria-label="Video player" onKeyDown={handlePlayerKeyDown} onPointerDown={revealControls} onMouseMove={() => { if (!controlsShown) revealControls() }} style={{ position: 'relative', overflow: 'hidden', background: '#000', cursor: fullscreen && !controlsShown ? 'none' : 'default' }}>
       <video
         ref={videoRef}
         onTimeUpdate={handleTimeUpdate}
@@ -330,11 +378,13 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
         onSeeked={handleSeeked}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
-        onPause={() => { if (videoRef.current?.duration) saveProgress(videoRef.current.currentTime, videoRef.current.duration, true) }}
+        onPlay={() => { setPlaying(true); lastObservationAtRef.current = Date.now(); if (videoRef.current?.duration) saveProgress(videoRef.current.currentTime, videoRef.current.duration, true) }}
+        onPause={() => { setPlaying(false); if (videoRef.current?.duration) saveProgress(videoRef.current.currentTime, videoRef.current.duration, true) }}
         onError={handleVideoError}
         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
         playsInline
       />
+      {seekNotice && <p role="status" style={{ position: 'absolute', top: 12, left: 12, right: 12, margin: 0, padding: '8px 12px', borderRadius: 6, background: 'rgba(0,0,0,.8)', color: '#fff', fontSize: 12 }}>{seekNotice}</p>}
       <div className="video-controls" onMouseEnter={() => { overControlsRef.current = true; if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current) }} onMouseLeave={() => { overControlsRef.current = false; revealControls() }} style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         display: 'block',
@@ -346,14 +396,15 @@ export default function VideoPlayer({ playbackId, courseId, lessonId, initialPos
       }}>
         <label htmlFor={`video-seek-${lessonId ?? courseId}`} style={{ display: 'block', color: '#fff', fontSize: 11, marginBottom: 9 }}>
           <span className="sr-only">Seek video</span>
-          <input id={`video-seek-${lessonId ?? courseId}`} type="range" min="0" max={duration || 0} step="0.1" value={Math.min(currentTime, duration || 0)} onChange={(event) => { if (videoRef.current) videoRef.current.currentTime = Number(event.target.value) }} aria-label="Seek video" style={{ display: 'block', width: '100%', height: 7, accentColor: '#7FA4D1', cursor: 'pointer' }} />
+          <input id={`video-seek-${lessonId ?? courseId}`} type="range" min="0" max={duration || 0} step="0.1" value={Math.min(currentTime, duration || 0)} onChange={(event) => seekTo(Number(event.target.value))} aria-label="Seek video" aria-describedby={restrictSeeking ? `video-seek-hint-${lessonId ?? courseId}` : undefined} style={{ display: 'block', width: '100%', height: 20, accentColor: '#7FA4D1', cursor: 'pointer' }} />
+          {restrictSeeking && <span id={`video-seek-hint-${lessonId ?? courseId}`} style={{ display: 'block', marginTop: 4 }}>You can rewind and revisit parts you have watched.</span>}
         </label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 10, minHeight: 42 }}>
           <span style={{ justifySelf: 'start', color: '#fff', fontSize: 12, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{elapsedStr} / {duration > 0 ? formatTime(duration) : '0:00'}</span>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
           <button type="button" onClick={() => seekBy(-10)} aria-label="Rewind 10 seconds" style={controlButtonStyle}><Rewind size={18} /></button>
           <button type="button" onClick={togglePlay} aria-label={playing ? 'Pause video' : 'Play video'} style={{ ...controlButtonStyle, width: 46, height: 46, background: 'var(--blue)', borderColor: 'var(--blue)' }}>{playing ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}</button>
-          <button type="button" onClick={() => seekBy(10)} aria-label="Forward 10 seconds" style={controlButtonStyle}><FastForward size={18} /></button>
+          <button type="button" onClick={() => seekBy(10)} aria-label="Forward 10 seconds" disabled={restrictSeeking && clampSeekTarget(Math.min(duration, currentTime + 10), watchedRangesRef.current, duration) <= currentTime} style={{ ...controlButtonStyle, opacity: restrictSeeking && clampSeekTarget(Math.min(duration, currentTime + 10), watchedRangesRef.current, duration) <= currentTime ? .4 : 1 }}><FastForward size={18} /></button>
           </div>
           <button type="button" onClick={toggleFullscreen} aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'} style={{ ...controlButtonStyle, justifySelf: 'end' }}>{fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}</button>
         </div>
@@ -367,8 +418,8 @@ function formatTime(seconds: number) {
 }
 
 const controlButtonStyle: React.CSSProperties = {
-  width: 42,
-  height: 42,
+  width: 44,
+  height: 44,
   display: 'grid',
   placeItems: 'center',
   border: '1px solid rgba(255,255,255,.35)',

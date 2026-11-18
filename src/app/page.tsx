@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowLeft,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
@@ -17,9 +16,11 @@ import {
   School,
   Star,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import PublicFooter from "@/components/PublicFooter";
 import PublicNavbar from "@/components/PublicNavbar";
+import { publicCourseFromPlacement, type PublicCourse, type PublicHomeCourse } from "@/data/publicCourses";
+import CourseCoverImage from "@/components/CourseCoverImage";
 
 /* Restore the first slide by uncommenting the block below and removing the current first slide */
 const slides = [
@@ -64,24 +65,6 @@ const slides = [
   },
 ] as const;
 
-const recommendations = [
-  [
-    "Introduction to Artificial Intelligence",
-    "AI foundations",
-    "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=600&q=85",
-  ],
-  [
-    "AI Safety & Responsible Use in Schools",
-    "Responsible AI",
-    "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=85",
-  ],
-  [
-    "Practical AI for Education",
-    "School productivity",
-    "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=85",
-  ],
-] as const;
-
 const benefits = [
   [
     GraduationCap,
@@ -112,65 +95,6 @@ const benefits = [
     FolderUp,
     "Growing library",
     "Keep developing as new digital learning resources are added.",
-  ],
-] as const;
-
-const courseCategories = [
-  "All courses",
-  "Artificial Intelligence",
-  "Safety",
-] as const;
-
-type CourseStatus = "available" | "coming-soon";
-
-const featuredCourses: {
-  title: string;
-  category: string;
-  duration: string;
-  image: string;
-  status: CourseStatus;
-}[] = [
-  {
-    title: "Introduction to Artificial Intelligence",
-    category: "Artificial Intelligence",
-    duration: "20 min",
-    status: "available",
-    image:
-      "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "AI Safety & Responsible Use in Schools",
-    category: "Safety",
-    duration: "25 min",
-    status: "available",
-    image:
-      "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=800&q=85",
-  },
-  {
-    title: "Practical AI for Education",
-    category: "Artificial Intelligence",
-    duration: "30 min",
-    status: "available",
-    image:
-      "https://images.unsplash.com/photo-1516321165247-4aa89a48be28?auto=format&fit=crop&w=800&q=85",
-  },
-];
-
-const newSkills = [
-  [
-    "Microsoft 365 for School Teams",
-    "Digital productivity",
-    "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=85",
-  ],
-  [
-    "Protecting School Data",
-    "Data protection",
-    "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=900&q=85",
-  ],
-  [
-    "Better Digital Communication",
-    "Professional skills",
-    "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=85",
   ],
 ] as const;
 
@@ -234,122 +158,33 @@ export default function HomePage() {
   const [active, setActive] = useState(0);
   const [activeCategory, setActiveCategory] = useState("All courses");
   const slide = slides[active];
-  const trackRef = useRef<HTMLDivElement>(null);
-  const marqueeRef = useRef<HTMLDivElement>(null);
-  const recommendationRef = useRef<HTMLDivElement>(null);
-  const [canScroll, setCanScroll] = useState({ left: false, right: false });
-  const [recommendationScroll, setRecommendationScroll] = useState({ left: false, right: false });
-  const [managedFeaturedCourses, setManagedFeaturedCourses] = useState(featuredCourses);
-  const [managedRecommendations, setManagedRecommendations] = useState<Array<[string, string, string]>>(recommendations.map(([title, category, image]) => [title, category, image]));
-  const [managedSkills, setManagedSkills] = useState<Array<[string, string, string]>>(newSkills.map(([title, category, image]) => [title, category, image]));
+  const [managedFeaturedCourses, setManagedFeaturedCourses] = useState<PublicCourse[]>([]);
+  const [managedRecommendations, setManagedRecommendations] = useState<PublicCourse[]>([]);
+  const [managedSkills, setManagedSkills] = useState<PublicCourse[]>([]);
   const [homeContentReady, setHomeContentReady] = useState(false);
+  const [homeContentError, setHomeContentError] = useState('');
 
-  useEffect(() => {
-    fetch('/api/public/home-content', { cache: 'no-store' })
-      .then((response) => response.ok ? response.json() : null)
+  const loadHomeContent = useCallback(() => {
+    setHomeContentReady(false);
+    setHomeContentError('');
+    return fetch('/api/public/home-content', { cache: 'no-store' })
+      .then((response) => { if (!response.ok) throw new Error('Unable to load courses. Please try again.'); return response.json(); })
       .then((content) => {
-        const toImage = (course: any) => course.coverImageUrl || `/api/public/course-thumbnail/${course.id}`;
-        const toCard = (course: any) => ({
-          title: course.title,
-          category: course.section?.name ?? 'Artificial Intelligence',
-          duration: `${course.durationMinutes ?? 0} min`,
-          lessons: 0,
-          status: 'available' as const,
-          image: toImage(course),
-        });
-        const toTuple = (course: any, fallbackCategory: string): [string, string, string] => [course.title, course.section?.name ?? fallbackCategory, toImage(course)];
-
-        const topCourses = content?.TOP_COURSES ?? [];
-        if (topCourses.length) {
-          const staticByTitle = new Map(featuredCourses.map((course) => [course.title, course] as const));
-          setManagedFeaturedCourses(topCourses.map((course: any) => staticByTitle.get(course.title) ?? toCard(course)));
-        } else {
-          setManagedFeaturedCourses(featuredCourses);
-        }
-
-        const recommended = content?.RECOMMENDED ?? [];
-        if (recommended.length) {
-          const staticByTitle = new Map(recommendations.map(([title, category, image]) => [title, [category, image]] as const));
-          setManagedRecommendations(recommended.map((course: any) => {
-            const staticItem = staticByTitle.get(course.title);
-            return staticItem ? [course.title, staticItem[0], staticItem[1]] as [string, string, string] : toTuple(course, 'Recommended learning');
-          }));
-        } else {
-          setManagedRecommendations(recommendations.map(([title, category, image]) => [title, category, image] as [string, string, string]));
-        }
-
-        const unlock = content?.UNLOCK_SOMETHING_NEW ?? [];
-        if (unlock.length) {
-          const staticByTitle = new Map(newSkills.map(([title, category, image]) => [title, [category, image]] as const));
-          setManagedSkills(unlock.map((course: any) => {
-            const staticItem = staticByTitle.get(course.title);
-            return staticItem ? [course.title, staticItem[0], staticItem[1]] as [string, string, string] : toTuple(course, 'New skill');
-          }));
-        } else {
-          setManagedSkills(newSkills.map(([title, category, image]) => [title, category, image] as [string, string, string]));
-        }
+        const mapCourses = (courses: PublicHomeCourse[] = []) => courses.map(publicCourseFromPlacement);
+        setManagedFeaturedCourses(mapCourses(content.TOP_COURSES));
+        setManagedRecommendations(mapCourses(content.RECOMMENDED));
+        setManagedSkills(mapCourses(content.UNLOCK_SOMETHING_NEW));
       })
-      .catch(() => {})
+      .catch((error) => setHomeContentError(error instanceof Error ? error.message : 'Unable to load courses. Please try again.'))
       .finally(() => setHomeContentReady(true));
   }, []);
+  useEffect(() => { loadHomeContent(); }, [loadHomeContent]);
 
   const categoryCourses =
     activeCategory === "All courses"
       ? managedFeaturedCourses
       : managedFeaturedCourses.filter((course) => course.category === activeCategory);
   const homeCategories = ["All courses", ...Array.from(new Set(managedFeaturedCourses.map((course) => course.category)))];
-
-  const updateScrollState = useCallback(() => {
-    const marquee = marqueeRef.current;
-    if (!marquee) return;
-    setCanScroll({
-      left: marquee.scrollLeft > 1,
-      right: marquee.scrollLeft < marquee.scrollWidth - marquee.clientWidth - 1,
-    });
-  }, []);
-
-  useEffect(() => {
-    const marquee = marqueeRef.current;
-    if (!marquee) return;
-    updateScrollState();
-    marquee.addEventListener("scroll", updateScrollState, { passive: true });
-    window.addEventListener("resize", updateScrollState);
-    return () => {
-      marquee.removeEventListener("scroll", updateScrollState);
-      window.removeEventListener("resize", updateScrollState);
-    };
-  }, [updateScrollState, categoryCourses.length]);
-
-  useEffect(() => {
-    const marquee = marqueeRef.current;
-    if (!marquee) return;
-    marquee.scrollLeft = 0;
-  }, [activeCategory, categoryCourses.length]);
-
-  const updateRecommendationScroll = useCallback(() => {
-    const rail = recommendationRef.current;
-    if (!rail) return;
-    setRecommendationScroll({ left: rail.scrollLeft > 1, right: rail.scrollLeft < rail.scrollWidth - rail.clientWidth - 1 });
-  }, []);
-
-  useEffect(() => {
-    const rail = recommendationRef.current;
-    if (!rail) return;
-    updateRecommendationScroll();
-    rail.addEventListener('scroll', updateRecommendationScroll, { passive: true });
-    window.addEventListener('resize', updateRecommendationScroll);
-    return () => { rail.removeEventListener('scroll', updateRecommendationScroll); window.removeEventListener('resize', updateRecommendationScroll); };
-  }, [updateRecommendationScroll, managedRecommendations.length]);
-
-  const scrollRecommendations = (direction: 1 | -1) => recommendationRef.current?.scrollBy({ left: direction * 270, behavior: 'smooth' });
-
-  const scrollByCard = (dir: 1 | -1) => {
-    const marquee = marqueeRef.current;
-    if (!marquee) return;
-    const card = marquee.querySelector<HTMLElement>(".atlas-course-card");
-    const step = card ? card.offsetWidth + 20 : 280;
-    marquee.scrollBy({ left: dir * step, behavior: "smooth" });
-  };
 
   useEffect(() => {
     const timer = window.setInterval(
@@ -386,6 +221,7 @@ export default function HomePage() {
       <PublicNavbar />
 
       <main>
+        {homeContentError && <p role="alert" className="atlas-course-load-error">{homeContentError} <button type="button" onClick={() => loadHomeContent()}>Retry</button></p>}
         <section
           className={`atlas-hero atlas-hero-${slide.variant}`}
           aria-roledescription="carousel"
@@ -459,13 +295,11 @@ export default function HomePage() {
             </p>
             <Link href="#courses">View pathway</Link>
           </div>
-          {recommendationScroll.left && <button className="atlas-round-control atlas-recommendation-prev" type="button" aria-label="View previous recommendations" onClick={() => scrollRecommendations(-1)}><ArrowLeft size={16} /></button>}
-          <div className="atlas-recommendation-list" ref={recommendationRef}>
-            {managedRecommendations.map(([title, category, image]) => (
-              <article className="atlas-mini-course" key={title}>
+          <div className="atlas-recommendation-list">
+            {managedRecommendations.map(({ id, title, category, image }) => (
+              <article className="atlas-mini-course" key={id}>
                 <div className="atlas-mini-thumb">
-                  {image ? <img src={image} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none'; event.currentTarget.nextElementSibling?.removeAttribute('hidden') }} /> : null}
-                  <div className="atlas-mini-thumb-placeholder" aria-hidden="true" hidden={Boolean(image)} />
+                  <CourseCoverImage courseId={id} coverImageUrl={image} sizes="110px" />
                 </div>
                 <div>
                   <span>{category}</span>
@@ -473,16 +307,8 @@ export default function HomePage() {
                 </div>
               </article>
             ))}
+            {homeContentReady && !homeContentError && managedRecommendations.length === 0 && <p className="atlas-empty-courses">New courses are coming soon.</p>}
           </div>
-          <button
-            className="atlas-round-control atlas-recommendation-next"
-            type="button"
-            aria-label="View more recommendations"
-            disabled={!recommendationScroll.right}
-            onClick={() => scrollRecommendations(1)}
-          >
-            <ArrowRight size={16} />
-          </button>
         </section>
 
         <section
@@ -533,12 +359,12 @@ export default function HomePage() {
               </button>
             ))}
           </div>
-          <div className="atlas-course-marquee" ref={marqueeRef}>
-            <div className="atlas-course-track" ref={trackRef}>
+          <div className="atlas-course-marquee">
+            <div className="atlas-course-track">
               {categoryCourses.map((course, index) => (
-                <article className="atlas-course-card" key={course.title}>
+                <article className="atlas-course-card" key={course.id}>
                   <div className="atlas-course-image">
-                    <Image src={course.image} alt="" fill sizes="(max-width: 760px) 100vw, 230px" />
+                    <CourseCoverImage courseId={course.id} coverImageUrl={course.image} sizes="(max-width: 760px) 100vw, 300px" />
                     <span
                       className={
                         course.status === "available"
@@ -579,26 +405,7 @@ export default function HomePage() {
                 </article>
               ))}
             </div>
-          </div>
-          <div className="atlas-section-controls">
-            <div>
-              <button
-                type="button"
-                aria-label="Previous courses"
-                disabled={!canScroll.left}
-                onClick={() => scrollByCard(-1)}
-              >
-                <ArrowLeft size={15} />
-              </button>
-              <button
-                type="button"
-                aria-label="Next courses"
-                disabled={!canScroll.right}
-                onClick={() => scrollByCard(1)}
-              >
-                <ArrowRight size={15} />
-              </button>
-            </div>
+            {homeContentReady && !homeContentError && categoryCourses.length === 0 && <p className="atlas-empty-courses">New courses are coming soon.</p>}
           </div>
         </section>
 
@@ -616,24 +423,25 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="atlas-skill-grid">
-            {managedSkills.map(([title, category, image], index) => (
-              <article className="atlas-skill-card" key={title}>
+            {managedSkills.map(({ id, title, category, image, duration }, index) => (
+              <article className="atlas-skill-card" key={id}>
                 <div>
-                  <Image src={image} alt="" fill sizes="(max-width: 760px) 100vw, 300px" />
+                  <CourseCoverImage courseId={id} coverImageUrl={image} sizes="(max-width: 760px) 100vw, 300px" />
                   <span>{index + 1}</span>
                 </div>
                 <p>{category}</p>
                 <h3>{title}</h3>
                 <div>
                   <Stars />
-                  <strong>4.{7 + index}</strong>
+                  <strong>4.8</strong>
                 </div>
                 <p className="atlas-skill-meta">
-                  <Clock3 size={13} /> {2 + index} hours
+                  <Clock3 size={13} /> {duration}
                 </p>
                 <Link href="/login">Join course</Link>
               </article>
             ))}
+            {homeContentReady && !homeContentError && managedSkills.length === 0 && <p className="atlas-empty-courses">New courses are coming soon.</p>}
           </div>
         </section>
 

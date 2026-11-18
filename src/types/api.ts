@@ -17,7 +17,9 @@ export interface ApiCourse {
     id: string
     status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
     watchedSeconds: number
-      lastPositionSeconds?: number
+    lastPositionSeconds?: number
+    watchedRanges?: { start: number; end: number }[]
+    completedAt?: string | null
     durationSeconds: number
     percentComplete: number
     lastWatchedAt: string | null
@@ -56,7 +58,9 @@ export interface ApiLesson {
     id: string
     status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
     watchedSeconds: number
-      lastPositionSeconds?: number
+    lastPositionSeconds?: number
+    watchedRanges?: { start: number; end: number }[]
+    completedAt?: string | null
     durationSeconds: number
     percentComplete: number
     lastWatchedAt: string | null
@@ -133,6 +137,7 @@ export interface AdminCourse {
   slug: string
   title: string
   description: string
+  coverImageUrl?: string | null
   durationMinutes: number
   durationSeconds?: number
   published: boolean

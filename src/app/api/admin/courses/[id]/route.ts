@@ -69,11 +69,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const requestedStatus = body.data.status ?? (body.data.published === undefined ? undefined : body.data.published ? 'PUBLISHED' : 'DRAFT')
     if (requestedStatus === 'PUBLISHED' || requestedStatus === 'ARCHIVED') await requirePermission('COURSE_PUBLISH')
     const status = editor.role === 'INSTRUCTOR'
-      ? requestedStatus === 'REVIEW' ? 'REVIEW' : 'DRAFT'
+      ? requestedStatus === undefined ? undefined : requestedStatus === 'REVIEW' ? 'REVIEW' : 'DRAFT'
       : requestedStatus
     const { published: _legacyPublished, ...updateData } = body.data
     const data = { ...updateData, ...(status ? { status, published: status === 'PUBLISHED' } : {}) }
-    const course = await prisma.course.update({ where: { id }, data })
+    const course = await prisma.$transaction(async (tx) => {
+      const updated = await tx.course.update({ where: { id }, data })
+      if (updated.status === 'ARCHIVED') await tx.homePagePlacement.deleteMany({ where: { courseId: id } })
+      return updated
+    })
     return NextResponse.json({ course })
   } catch (error) {
     return apiErrorResponse(error, 'Unable to update course')

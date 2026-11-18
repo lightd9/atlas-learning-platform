@@ -7,6 +7,9 @@ import AuthShell from '@/components/AuthShell'
 import AppModal from '@/components/AppModal'
 import SetPasswordModal from '@/components/SetPasswordModal'
 import { useToast } from '@/components/Toast'
+import ActionMenu from '@/components/ActionMenu'
+import BulkResendSummary from '@/components/BulkResendSummary'
+import { useInvitationResend } from '@/hooks/useInvitationResend'
 
 interface TeacherWithInvitation {
   id: string
@@ -61,6 +64,7 @@ export default function TeachersPage() {
   const [acceptTarget, setAcceptTarget] = useState<{ id: string; name: string; email: string } | null>(null)
   const [acceptBusy, setAcceptBusy] = useState(false)
   const [acceptError, setAcceptError] = useState('')
+  const { resend, busy: resendBusy, results: resendResults } = useInvitationResend()
 
   function loadData() {
     setLoading(true)
@@ -95,14 +99,16 @@ export default function TeachersPage() {
     loadData()
   }
 
-  async function handleResend(id: string) {
-    const response = await fetch(`/api/invitations/${id}`, { method: 'POST' })
-    toast(response.ok ? 'Invitation resent' : 'Unable to resend invitation', response.ok ? 'success' : 'error')
+  async function handleResend(ids: string[]) {
+    const summary = await resend(ids)
+    if (!summary) return
+    toast(`${summary.sent} invitation${summary.sent === 1 ? '' : 's'} resent`, summary.failed ? 'error' : 'success')
+    setSelectedIds((current) => current.filter((id) => !ids.includes(id)))
     loadData()
   }
 
   async function handleRevoke(id: string) {
-    const response = await fetch(`/api/invitations/${id}`, { method: 'DELETE' })
+    const response = await fetch(`/api/invitations/${id}`, { method: 'PATCH' })
     toast(response.ok ? 'Invitation revoked' : 'Unable to revoke invitation', response.ok ? 'success' : 'error')
     loadData()
   }
@@ -171,6 +177,8 @@ export default function TeachersPage() {
 
   const activeCount = teachers.filter((t) => t.status === 'ACTIVE').length
   const pendingCount = invitations.filter((i) => i.status === 'PENDING').length
+  const pendingIds = invitations.filter((i) => i.status === 'PENDING' || i.status === 'EXPIRED').map((i) => i.id)
+  const selectedInvitationIds = pendingIds.filter((id) => selectedIds.includes(id))
 
   return <AuthShell active="Manage teachers">
     <div className="page-wrap">
@@ -241,9 +249,12 @@ export default function TeachersPage() {
             <div className="table-search"><Search size={16} /> <input placeholder="Search teachers" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
           </div>
         </div>
-        <div style={{ marginBottom: 12 }}>
-          <button className="secondary-button" style={selectMode ? { ...compactSelectStyle, borderColor: '#2b5ea2', color: '#2b5ea2' } : compactSelectStyle} onClick={toggleSelect}><CheckSquare size={14} /> {selectMode ? 'Selecting…' : 'Select'}</button>
+        <div className="invitation-resend-toolbar">
+          <button className="secondary-button" style={selectMode ? { ...compactSelectStyle, borderColor: '#2b5ea2', color: '#2b5ea2' } : compactSelectStyle} onClick={toggleSelect} disabled={resendBusy}><CheckSquare size={14} /> {selectMode ? 'Selecting…' : 'Select'}</button>
+          <button type="button" className="secondary-button" onClick={() => handleResend(pendingIds)} disabled={resendBusy || loading || pendingIds.length === 0}><RefreshCw size={14} /> Resend all pending ({pendingIds.length})</button>
+          {selectMode && <button type="button" className="primary-button" onClick={() => handleResend(selectedInvitationIds)} disabled={resendBusy || selectedInvitationIds.length === 0}>{resendBusy ? 'Sending...' : `Resend selected (${selectedInvitationIds.length})`}</button>}
         </div>
+        <BulkResendSummary results={resendResults} busy={resendBusy} />
         <div className="table-wrap">
           {loading
             ? <p className="muted" style={{ padding: 20 }}>Loading teachers...</p>
@@ -266,19 +277,11 @@ export default function TeachersPage() {
                       <td><span className={`status ${isInvitation ? 'pending' : m.status === 'ACTIVE' ? 'success' : 'error'}`}><i />{statusLabel}</span></td>
                       <td>{isInvitation ? '—' : formatWhen(m.lastActiveAt)}</td>
                       <td>
-                        {isInvitation && m.invitationStatus !== 'EXPIRED' && (
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            <button className="text-button" onClick={() => setAcceptTarget({ id: m.id, name: m.name, email: m.email })} title="Accept invitation & set password" style={{ color: '#047857' }}><CheckCircle2 size={14} /></button>
-                            <button className="text-button" onClick={() => handleResend(m.id)} title="Resend invitation"><RefreshCw size={14} /></button>
-                            <button className="text-button" onClick={() => handleRevoke(m.id)} title="Revoke invitation" style={{ color: '#e53e3e' }}><Ban size={14} /></button>
-                          </div>
-                        )}
-                        {isInvitation && m.invitationStatus === 'EXPIRED' && (
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                            <button className="text-button" onClick={() => setAcceptTarget({ id: m.id, name: m.name, email: m.email })} title="Accept invitation & set password" style={{ color: '#047857' }}><CheckCircle2 size={14} /></button>
-                            <button className="text-button" onClick={() => handleResend(m.id)}>Resend</button>
-                          </div>
-                        )}
+                        {isInvitation && <ActionMenu label={`Actions for invitation to ${m.name}`} disabled={resendBusy || acceptBusy || deleting} actions={[
+                          { label: 'Accept & set password', icon: <CheckCircle2 size={14} />, onSelect: () => setAcceptTarget({ id: m.id, name: m.name, email: m.email }) },
+                          { label: 'Resend invitation', icon: <RefreshCw size={14} />, onSelect: () => handleResend([m.id]) },
+                          { label: 'Revoke invitation', icon: <Ban size={14} />, onSelect: () => handleRevoke(m.id), destructive: true },
+                        ]} />}
                         {!isInvitation && !protectedRow && (
                           <button className="text-button" onClick={() => deleteMember(m)} title="Delete" style={{ ...iconButtonStyle, color: '#e53e3e' }}><Trash2 size={14} /></button>
                         )}

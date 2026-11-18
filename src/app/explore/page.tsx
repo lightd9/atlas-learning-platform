@@ -1,9 +1,9 @@
 import Link from "next/link";
-import Image from "next/image";
+import CourseCoverImage from "@/components/CourseCoverImage";
 import { ArrowRight, Clock3, Heart, Star } from "lucide-react";
 import PublicFooter from "@/components/PublicFooter";
 import PublicNavbar from "@/components/PublicNavbar";
-import { categoryId, publicCourseCategories, publicCourses as fallbackPublicCourses } from "@/data/publicCourses";
+import { categoryId, publicCourseFromPlacement } from "@/data/publicCourses";
 import { prisma } from "@/lib/prisma";
 
 function CourseStars() {
@@ -22,8 +22,7 @@ export default async function ExplorePage({
   const { q = "" } = await searchParams;
   const query = q.toLowerCase().trim();
   const placements = await prisma.homePagePlacement.findMany({ where: { section: "EXPLORE", active: true, course: { published: true, status: "PUBLISHED" } }, orderBy: { sortOrder: "asc" }, include: { course: { select: { id: true, title: true, description: true, coverImageUrl: true, durationMinutes: true, section: { select: { name: true } } } } } });
-  const managedCourses = placements.map((placement) => ({ title: placement.course.title, category: placement.course.section?.name ?? "Artificial Intelligence", duration: `${placement.course.durationMinutes} min`, lessons: 0, status: "available" as const, image: placement.course.coverImageUrl || `/api/public/course-thumbnail/${placement.course.id}` }));
-  const publicCourses = [...fallbackPublicCourses, ...managedCourses.filter((course) => !fallbackPublicCourses.some((fallback) => fallback.title === course.title))];
+  const publicCourses = placements.map((placement) => publicCourseFromPlacement(placement.course));
   const exploreCategories = Array.from(new Set(publicCourses.map((course) => course.category)));
   const filtered = query
     ? publicCourses.filter((course) =>
@@ -82,9 +81,9 @@ export default async function ExplorePage({
                 </div>
                 <div className="atlas-explore-course-grid">
                   {courses.map((course, index) => (
-                    <article className="atlas-course-card" key={course.title}>
+                    <article className="atlas-course-card" key={course.id}>
                       <div className="atlas-course-image">
-                        <Image src={course.image} alt="" fill sizes="(max-width: 760px) 100vw, 300px" />
+                        <CourseCoverImage courseId={course.id} coverImageUrl={course.image} sizes="(max-width: 760px) 100vw, 300px" />
                         <span className={course.status === "available" ? "atlas-badge-available" : "atlas-badge-soon"}>
                           {course.status === "available" ? "Available now" : "Coming soon"}
                         </span>

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, GraduationCap } from 'lucide-react'
 import Logo from '@/components/Logo'
 import PasswordInput from '@/components/PasswordInput'
 import BackToHome from '@/components/BackToHome'
@@ -60,7 +60,14 @@ export default function RegisterForm() {
     <div className="login-layout">
       <aside className="login-visual">
         <Link className="login-visual-brand" href="/" aria-label="Atlas Learning home"><Logo /></Link>
-        <p className="login-visual-caption">Your school&apos;s learning space is private and secure.</p>
+        <div className="login-visual-content">
+          <span className="login-visual-mark" aria-hidden="true"><GraduationCap size={20} /></span>
+          <p>For parents &amp; carers</p>
+          <h2>Stay close to their learning.</h2>
+          <span className="login-visual-line" aria-hidden="true" />
+          <small>See the courses your child is working through and keep their school learning close.</small>
+        </div>
+        <p className="login-visual-caption">Private, secure access for your family.</p>
       </aside>
       <div className="login-card">
         <BackToHome />

@@ -1,22 +1,16 @@
 import { NextResponse } from 'next/server'
-import { audienceForRole, requireSchoolUser } from '@/lib/access'
+import { requireSchoolUser } from '@/lib/access'
+import { buildLearnerCourseWhere } from '@/lib/course-access-policy'
 import { prisma } from '@/lib/prisma'
 import { apiErrorResponse } from '@/lib/api-errors'
+import { serializeLessonProgress } from '@/lib/progress-credit'
 
 export async function GET() {
   try {
     const user = await requireSchoolUser()
 
     const courses = await prisma.course.findMany({
-      where: {
-        published: true,
-        status: 'PUBLISHED',
-        audience: audienceForRole(user.role),
-        OR: [
-          { schoolAccess: { none: { schoolId: user.schoolId ?? undefined } } },
-          { schoolAccess: { some: { schoolId: user.schoolId ?? undefined, enabled: true } } },
-        ],
-      },
+      where: buildLearnerCourseWhere({ role: user.role, schoolId: user.schoolId }),
       include: {
         progress: { where: { userId: user.id } },
         section: { select: { id: true, name: true, slug: true, description: true, sortOrder: true } },
@@ -48,7 +42,20 @@ export async function GET() {
       console.warn('Unable to load optional course resources', resourceError)
     }
 
-    const payload = { courses: courses.map((course) => ({ ...course, resources: resourcesByCourse.get(course.id) ?? [] })) }
+    const payload = {
+      courses: courses.map((course) => ({
+        ...course,
+        progress: course.progress.map(serializeLessonProgress),
+        modules: course.modules.map((module) => ({
+          ...module,
+          lessons: module.lessons.map((lesson) => ({
+            ...lesson,
+            progress: lesson.progress.map(serializeLessonProgress),
+          })),
+        })),
+        resources: resourcesByCourse.get(course.id) ?? [],
+      })),
+    }
     return NextResponse.json(payload)
   } catch (error) {
     return apiErrorResponse(error, 'Unable to load courses')

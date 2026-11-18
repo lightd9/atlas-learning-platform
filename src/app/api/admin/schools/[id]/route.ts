@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireAtlasAdmin, requirePermission } from '@/lib/access'
 import { auditLog } from '@/lib/audit'
 import { prisma } from '@/lib/prisma'
+import { buildLearnerCourseWhere } from '@/lib/course-access-policy'
+import { apiErrorResponse } from '@/lib/api-errors'
 import { z } from 'zod'
 
 const updateSchema = z.object({
@@ -15,7 +17,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   try {
     await requirePermission('SCHOOL_CREATE')
     const { id } = await params
-    const [school, totalPublishedCourses, parentCount] = await Promise.all([prisma.school.findUnique({
+    const [school, availableCourseCount, parentCount] = await Promise.all([prisma.school.findUnique({
       where: { id },
       include: {
         _count: { select: { courseAccess: true } },
@@ -34,7 +36,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           orderBy: { createdAt: 'desc' },
         },
       },
-    }), prisma.course.count({ where: { published: true } }), prisma.user.count({ where: { schoolId: id, role: 'PARENT' } })])
+    }), prisma.course.count({ where: buildLearnerCourseWhere({ role: 'TEACHER', schoolId: id }) }), prisma.user.count({ where: { schoolId: id, role: 'PARENT' } })])
     if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 })
     return NextResponse.json({
       school: {
@@ -44,17 +46,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         active: school.active,
         userCount: school.users.length,
         parentCount,
-        courseCount: Math.max(0, totalPublishedCourses - school.courseAccess.filter((access) => !access.enabled).length),
+        courseCount: availableCourseCount,
         parentRegistration: { enabled: school.parentRegistrationEnabled, token: school.parentRegistrationToken },
         createdAt: school.createdAt.toISOString(),
         users: school.users,
-        invitations: school.invitations,
+        invitations: school.invitations.map((invitation) => ({ ...invitation, status: invitation.status === 'PENDING' && invitation.expiresAt.getTime() <= Date.now() ? 'EXPIRED' : invitation.status })),
         courseAccess: school.courseAccess,
       },
     })
   } catch (error) {
-    const message = error instanceof Error && error.message === 'UNAUTHORIZED' ? 'Unauthorized' : 'Unable to load school'
-    return NextResponse.json({ error: message }, { status: message === 'Unauthorized' ? 401 : 403 })
+    return apiErrorResponse(error, 'Unable to load school')
   }
 }
 
@@ -90,8 +91,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const school = await prisma.school.findUniqueOrThrow({ where: { id } })
     return NextResponse.json({ school: { id: school.id, name: school.name, slug: school.slug, active: school.active } })
   } catch (error) {
-    const message = error instanceof Error && error.message === 'UNAUTHORIZED' ? 'Unauthorized' : 'Unable to update school'
-    return NextResponse.json({ error: message }, { status: message === 'Unauthorized' ? 401 : 403 })
+    return apiErrorResponse(error, 'Unable to update school')
   }
 }
 
@@ -132,7 +132,6 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    const message = error instanceof Error && error.message === 'UNAUTHORIZED' ? 'Unauthorized' : 'Unable to delete school'
-    return NextResponse.json({ error: message }, { status: message === 'Unauthorized' ? 401 : 403 })
+    return apiErrorResponse(error, 'Unable to delete school')
   }
 }

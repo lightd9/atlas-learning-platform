@@ -223,8 +223,8 @@ export default function AdminCourseEditPage({ params }: { params: Promise<{ cour
 
             <div style={{ alignSelf: 'stretch', display: 'flex', flexDirection: 'column' }}>
               {session?.user?.role === 'ATLAS_ADMIN' && <div className="panel" style={{ marginBottom: 16 }}>
-                <h3 style={{ margin: '0 0 12px', fontSize: 14 }}>School access <span className={`badge ${course.audience === 'PARENT' ? 'badge-parent' : 'badge-staff'}`}>{course.audience === 'PARENT' ? 'Parents' : 'Staff'}</span></h3>
-                <p className="muted" style={{ fontSize: 12 }}>{course.audience === 'PARENT' ? "Select which schools' parents can access this course. Selecting all schools makes it available to every school's parents." : 'All active schools is the default. Selecting fewer schools changes this course to selected-school availability; selecting all restores the global default.'}</p>
+                <h3 style={{ margin: '0 0 12px', fontSize: 14 }}>School access <span className={`badge ${course.audience === 'PARENT' ? 'badge-parent' : 'badge-staff'}`}>{course.audience === 'PARENT' ? 'Parents + staff' : 'Staff only'}</span></h3>
+                <p className="muted" style={{ fontSize: 12 }}>All active schools is the default. Selecting fewer schools makes this course available only to those schools; selecting all restores the global default.</p>
                 {schools.length > 0 ? (
                   <>
                   <div style={{ display: 'flex', gap: 8, marginTop: 12, marginBottom: 8 }}><button className="text-button" onClick={() => setSelectedSchoolIds(schools.map((school) => school.id))}>Select all</button><button className="text-button" onClick={() => setSelectedSchoolIds([])}>Deselect all</button><span className="muted" style={{ marginLeft: 'auto', fontSize: 11 }}>{selectedSchoolIds.length}/{schools.length} selected</span></div>

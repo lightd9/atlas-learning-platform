@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createInvitationToken, hashInvitationToken } from '@/lib/invitations'
+import { createInvitationToken, hashInvitationToken, invitationExpiry, INVITATION_TTL_DAYS } from '@/lib/invitations'
 
 describe('createInvitationToken', () => {
   it('returns a raw token and a hash', () => {
@@ -56,5 +56,14 @@ describe('hashInvitationToken', () => {
   it('handles empty string input', () => {
     const hash = hashInvitationToken('')
     expect(hash).toMatch(/^[0-9a-f]{64}$/)
+  })
+})
+
+describe('invitation expiry', () => {
+  it('defaults to 30 days', () => {
+    expect(INVITATION_TTL_DAYS).toBe(30)
+    const remaining = invitationExpiry().getTime() - Date.now()
+    expect(remaining).toBeGreaterThan(29 * 24 * 60 * 60 * 1000)
+    expect(remaining).toBeLessThanOrEqual(30 * 24 * 60 * 60 * 1000)
   })
 })

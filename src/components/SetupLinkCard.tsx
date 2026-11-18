@@ -37,7 +37,7 @@ export default function SetupLinkCard({ label, setupUrl, invitationId, expiresAt
     setSending(false)
     if (!res.ok || !data.invitation?.setupToken) { toast('Unable to send a new link', 'error'); return }
     setUrl(`${window.location.origin}/setup/${data.invitation.setupToken}`)
-    setExpiry(new Date(data.invitation.expiresAt ?? Date.now() + 7 * 24 * 60 * 60 * 1000).getTime())
+    setExpiry(new Date(data.invitation.expiresAt ?? Date.now() + 30 * 24 * 60 * 60 * 1000).getTime())
     setNow(Date.now())
     toast('New link sent', 'success')
   }

@@ -25,9 +25,13 @@ npx prisma generate
 
 Never reset the database to solve application problems. Preserve existing progress, analytics, disabled users, schools, and legacy courses with null owners. If Prisma files are locked, stop the local Next.js process, run the normal generate command, and restart it.
 
+Next.js loads `.env.development.local` or `.env.production.local` ahead of `.env.local`, while Prisma CLI loads `.env`. Keep database settings aligned with the intended environment. Set both `DATABASE_URL` and `DATABASE_URL_UNPOOLED`: for Neon, use its pooled URL at runtime and its direct URL for migrations; for local PostgreSQL, both variables can use the same connection string. Prisma's datasource `directUrl` ensures normal CLI migration commands use `DATABASE_URL_UNPOOLED`. The build migration helper loads Next.js production env files and launches the Prisma CLI with Node so it also works on Windows.
+
+The watched-range migration adds course-level coverage, backfills legacy course/lesson totals without resetting progress or completion history, and removes archived courses' homepage placements. Deploy it before using the updated progress API. Existing invitation expiries are preserved; new and resent links use the configured 30-day default.
+
 ## Testing expectations
 
-Vitest tests live beside library code under `src/lib/*.test.ts`. Keep pure validation/formatting logic unit-tested. For authorization or course work, test at least: Atlas Admin access, instructor access to an owned course, instructor denial for another owner, and empty optional notes/resources. For migrations or authentication, verify a real configured database and one relevant role.
+Vitest tests live beside libraries, routes and components under `src/**/*.test.{ts,tsx}`. Library and route tests use Node; component interaction tests explicitly select jsdom. Keep pure validation/formatting logic unit-tested. For authorization or course work, test at least: Atlas Admin access, instructor access to an owned course, instructor denial for another owner, and empty optional notes/resources. For migrations or authentication, verify a real configured database and one relevant role. Exercise partial resend failure, parent/staff access restrictions, forged progress payloads, and slider/keyboard/native seeking when changing those workflows.
 
 ## Review checklist
 

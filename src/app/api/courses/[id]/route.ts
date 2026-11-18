@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAvailableCourse, requireSchoolUser } from '@/lib/access'
 import { apiErrorResponse } from '@/lib/api-errors'
+import { serializeLessonProgress } from '@/lib/progress-credit'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -15,11 +16,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         progress: { where: { userId: user.id } },
         section: { select: { id: true, name: true, slug: true, description: true, sortOrder: true } },
         modules: {
-          where: { lessons: { some: { published: true } } },
+          where: { archived: false, lessons: { some: { published: true, archived: false } } },
           orderBy: { sortOrder: 'asc' },
           include: {
             lessons: {
-              where: { published: true },
+              where: { published: true, archived: false },
               orderBy: { sortOrder: 'asc' },
               include: { progress: { where: { userId: user.id } } },
             },
@@ -36,7 +37,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       console.warn('Unable to load optional course resources', resourceError)
     }
 
-    return NextResponse.json({ course: { ...course, resources } })
+    const serializedCourse = {
+      ...course,
+      progress: course.progress.map(serializeLessonProgress),
+      modules: course.modules.map((module) => ({
+        ...module,
+        lessons: module.lessons.map((lesson) => ({
+          ...lesson,
+          progress: lesson.progress.map(serializeLessonProgress),
+        })),
+      })),
+      resources,
+    }
+    return NextResponse.json({ course: serializedCourse })
   } catch (error) {
     return apiErrorResponse(error, 'Unable to load course')
   }

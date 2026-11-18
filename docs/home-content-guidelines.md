@@ -16,11 +16,17 @@ This is the product and implementation checklist for homepage course management.
 - Unlock something new
 - Explore catalogue
 
+Recommended supports 8 active visible courses and Unlock supports 12. Discover top courses and Explore are unlimited. These limits are shared by placement validation and public serialization. All configured cards wrap into responsive rows.
+
 ## Public visibility
 
 - A course is publicly visible only when it is published and actively placed.
 - Unpublishing a course removes it from homepage sections, Explore, and navbar search.
 - Explore and navbar search must use the same public course dataset.
+- Published `STAFF` and `PARENT` courses may be placed on the public site. Cards show course metadata; watching videos still requires the correct authenticated role and school access. Never expose Mux playback IDs in public course JSON.
+- Deleting a course cascades its placements. Archiving also deletes placements in the course transaction.
+- Uploaded cover images fall back to Mux thumbnails and then the shared default image.
+- Database placements are the only catalog source; do not reintroduce hard-coded course fallbacks.
 
 ## Permissions
 
@@ -36,7 +42,7 @@ This is the product and implementation checklist for homepage course management.
 - Support add, remove, preview, reorder, and open-editor actions.
 - Provide drag-and-drop ordering with accessible move-up and move-down controls.
 - Confirm removal from a section, but do not present it as course deletion.
-- Preserve the current three planned courses as initial homepage content.
+- Preserve existing database placements when changing section layouts.
 
 ## Delivery checkpoints
 

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAtlasAdmin, requireHeadteacher } from '@/lib/access'
 import { prisma } from '@/lib/prisma'
+import { buildLearnerCourseWhere } from '@/lib/course-access-policy'
+import { apiErrorResponse } from '@/lib/api-errors'
 
 const tones = ['blue', 'mint', 'lilac', 'peach', 'violet']
 
@@ -23,7 +25,7 @@ export async function GET(request: Request) {
         include: { progress: { select: { percentComplete: true, status: true, lastWatchedAt: true } } },
       }),
       prisma.course.findMany({
-        where: { published: true, audience: 'STAFF' },
+        where: buildLearnerCourseWhere({ schoolId, role: 'HEADTEACHER' }),
         select: { id: true, title: true },
       }),
       prisma.courseProgress.findMany({
@@ -141,7 +143,6 @@ export async function GET(request: Request) {
     }
     return NextResponse.json(payload)
   } catch (error) {
-    const message = error instanceof Error && error.message === 'UNAUTHORIZED' ? 'Unauthorized' : 'Unable to load analytics'
-    return NextResponse.json({ error: message }, { status: message === 'Unauthorized' ? 401 : 403 })
+    return apiErrorResponse(error, 'Unable to load analytics')
   }
 }

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import AdminShell from "@/components/AdminShell";
 import { DEFAULT_COURSE_COVER } from "@/lib/course-cover";
+import { HOME_SECTION_LIMITS, isPublicHomeCourse } from "@/lib/home-content";
 import { useToast } from "@/components/Toast";
 
 const sections = [
@@ -23,7 +24,7 @@ const sections = [
     key: "RECOMMENDED",
     label: "Recommended for you",
     description: "Personalised-looking highlights on the homepage.",
-    limit: 5,
+    limit: HOME_SECTION_LIMITS.RECOMMENDED,
   },
   {
     key: "TOP_COURSES",
@@ -35,7 +36,7 @@ const sections = [
     key: "UNLOCK_SOMETHING_NEW",
     label: "Unlock something new",
     description: "A fresh set of courses to explore.",
-    limit: 6,
+    limit: HOME_SECTION_LIMITS.UNLOCK_SOMETHING_NEW,
   },
   {
     key: "EXPLORE",
@@ -43,11 +44,6 @@ const sections = [
     description: "Courses available through Explore and navbar search.",
     limit: null,
   },
-];
-const legacyUnlockCourses: Placement[] = [
-  { id: "legacy-unlock-microsoft", courseId: "legacy-unlock-microsoft", section: "UNLOCK_SOMETHING_NEW", sortOrder: 0, course: { id: "legacy-unlock-microsoft", title: "Microsoft 365 for School Teams", coverImageUrl: "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=900&q=85" } },
-  { id: "legacy-unlock-data", courseId: "legacy-unlock-data", section: "UNLOCK_SOMETHING_NEW", sortOrder: 1, course: { id: "legacy-unlock-data", title: "Protecting School Data", coverImageUrl: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=900&q=85" } },
-  { id: "legacy-unlock-communication", courseId: "legacy-unlock-communication", section: "UNLOCK_SOMETHING_NEW", sortOrder: 2, course: { id: "legacy-unlock-communication", title: "Better Digital Communication", coverImageUrl: "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=85" } },
 ];
 type Placement = {
   id: string;
@@ -62,6 +58,7 @@ type Course = {
   coverImageUrl?: string | null;
   published?: boolean;
   status?: string;
+  audience?: string;
   description?: string;
 };
 
@@ -125,14 +122,13 @@ export default function HomeContentPage() {
         const cd = await c.json();
         if (!p.ok)
           throw new Error(pd.error ?? "Unable to load homepage content");
-        const databasePlacements = (pd.placements ?? []).filter((item: Placement) => !(item.section === "UNLOCK_SOMETHING_NEW" && ["Introduction to Artificial Intelligence", "AI Safety & Responsible Use in Schools", "Practical AI for Education"].includes(item.course?.title ?? "")));
-        const existingTitles = new Set(databasePlacements.map((item: Placement) => item.course?.title));
-        const effectivePlacements = [...databasePlacements, ...legacyUnlockCourses.filter((item) => !existingTitles.has(item.course?.title))];
-        setPlacements(effectivePlacements);
-        setSaved(effectivePlacements);
+        const placements: Placement[] = pd.placements ?? [];
+        setPlacements(placements);
+        setSaved(placements);
         setCourses(
           (cd.courses ?? []).filter(
-            (item: Course) => item.published && item.status === "PUBLISHED",
+            (item: Course) =>
+              isPublicHomeCourse(item),
           ),
         );
       })
@@ -201,14 +197,14 @@ export default function HomeContentPage() {
     setSaving(true);
     try {
       const ids = new Set(placements.map((item) => item.id));
-      for (const item of saved.filter((item) => !ids.has(item.id) && !item.id.startsWith("legacy-"))) {
+      for (const item of saved.filter((item) => !ids.has(item.id))) {
         const response = await fetch(`/api/admin/home-content?id=${item.id}`, {
           method: "DELETE",
         });
         if (!response.ok)
           throw new Error("Unable to remove a homepage placement");
       }
-      for (const item of placements.filter((item) => !item.id.startsWith("legacy-"))) {
+      for (const item of placements) {
         const response = await fetch("/api/admin/home-content", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

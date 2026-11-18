@@ -1,5 +1,6 @@
 import type { UserRole } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { invitationExpiryText } from '@/lib/invitations'
 
 const FROM = process.env.EMAIL_FROM || 'Atlas Learning <onboarding@resend.dev>'
 const BASE_URL = process.env.AUTH_URL || 'http://localhost:3000'
@@ -67,9 +68,10 @@ function button(href: string, text: string) {
 export function roleInvitationEmail({ name, role, setupToken, invitedByName, schoolName }: { name: string; role: UserRole; setupToken: string; invitedByName: string; schoolName?: string | null }) {
   const copy = roleCopy[role]
   const context = schoolName ? ` for <strong>${schoolName}</strong>` : ''
+  const expiry = invitationExpiryText()
   return {
     subject: schoolName ? `${copy.subject} - ${schoolName}` : copy.subject,
-    html: layout(`<p>Hi ${name},</p><p><strong>${invitedByName}</strong> has invited you to join Atlas Learning as ${copy.article} <strong>${copy.label}</strong>${context}.</p><p>${copy.description}</p>${button(`${BASE_URL}/setup/${setupToken}`, 'Set up your account')}<p style="color:#98a2b3;font-size:13px">This secure invitation expires in 7 days. If you did not expect it, you can ignore this email.</p>`),
+    html: layout(`<p>Hi ${name},</p><p><strong>${invitedByName}</strong> has invited you to join Atlas Learning as ${copy.article} <strong>${copy.label}</strong>${context}.</p><p>${copy.description}</p>${button(`${BASE_URL}/setup/${setupToken}`, 'Set up your account')}<p style="color:#98a2b3;font-size:13px">This secure invitation expires in ${expiry}. If you did not expect it, you can ignore this email.</p>`),
   }
 }
 
@@ -84,7 +86,7 @@ export function headteacherSetupEmail(name: string, schoolName: string, setupTok
 }
 
 export function invitationResendEmail(name: string, schoolName: string, setupToken: string) {
-  return { subject: `Reminder: Join ${schoolName} on Atlas Learning`, html: layout(`<p>Hi ${name},</p><p>This is a reminder that you are invited to join <strong>${schoolName}</strong> on Atlas Learning.</p>${button(`${BASE_URL}/setup/${setupToken}`, 'Set up your account')}<p style="color:#98a2b3;font-size:13px">This link expires in 7 days.</p>`) }
+  return { subject: `Reminder: Join ${schoolName} on Atlas Learning`, html: layout(`<p>Hi ${name},</p><p>This is a reminder that you are invited to join <strong>${schoolName}</strong> on Atlas Learning.</p>${button(`${BASE_URL}/setup/${setupToken}`, 'Set up your account')}<p style="color:#98a2b3;font-size:13px">This link expires in ${invitationExpiryText()}.</p>`) }
 }
 
 export function invitationExpiredEmail(name: string, schoolName: string) {

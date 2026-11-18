@@ -134,7 +134,7 @@ export default function AdminSchoolParentsPage({ params }: { params: Promise<{ s
       </section>
 
       <section className="panel">
-        <div className="panel-head"><div><h2>Courses available to {schoolName || 'this school'}&apos;s parents</h2><p className="muted">Only parent-audience courses are listed. Select which ones this school&apos;s parents can access.</p></div></div>
+        <div className="panel-head"><div><h2>Parent courses available to {schoolName || 'this school'}</h2><p className="muted">Courses marked Parents + staff are listed here. Selection controls access for this school&apos;s parents and staff.</p></div></div>
         {!data || data.courses.length === 0
           ? <p className="muted">No parent courses have been created yet.</p>
           : <>

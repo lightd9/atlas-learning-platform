@@ -14,7 +14,7 @@ export async function GET() {
         include: {
           _count: { select: { users: { where: { role: { not: 'PARENT' } } } } },
           users: {
-            where: { role: 'TEACHER' },
+            where: { role: { in: ['TEACHER', 'HEADTEACHER'] } },
             select: { progress: { select: { percentComplete: true, status: true } } },
           },
         },
@@ -24,7 +24,7 @@ export async function GET() {
       prisma.course.count({ where: { published: true } }),
       prisma.courseProgress.findMany({ select: { percentComplete: true, status: true, watchedSeconds: true } }),
       prisma.invitation.count({ where: { status: 'PENDING' } }),
-      prisma.course.findMany({ orderBy: { createdAt: 'desc' }, take: 5, include: { section: { select: { name: true } }, _count: { select: { modules: true } } } }),
+      prisma.course.findMany({ orderBy: { createdAt: 'desc' }, take: 12, include: { section: { select: { name: true } }, _count: { select: { modules: true } } } }),
       prisma.course.findMany({ where: { OR: [{ modules: { none: {} } }, { modules: { some: { lessons: { none: {} } } } }] }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, title: true } }),
     ])
 

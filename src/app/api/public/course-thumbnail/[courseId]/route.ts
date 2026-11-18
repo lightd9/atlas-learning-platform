@@ -13,9 +13,10 @@ async function resolveThumbnailUrl(courseId: string): Promise<string | null> {
     select: {
       muxPlaybackId: true,
       modules: {
+        where: { archived: false },
         orderBy: { sortOrder: 'asc' },
         select: {
-          lessons: { where: { muxPlaybackId: { not: null } }, orderBy: { sortOrder: 'asc' }, select: { muxPlaybackId: true } },
+          lessons: { where: { published: true, archived: false, muxPlaybackId: { not: null } }, orderBy: { sortOrder: 'asc' }, select: { muxPlaybackId: true } },
         },
       },
     },
