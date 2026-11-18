@@ -674,7 +674,7 @@
   overflow-x: auto;
   scroll-snap-type: x proximity;
   overscroll-behavior-x: contain;
-  scrollbar-width: thin;
+  scrollbar-width: none;
 }
 .atlas-recommendation-carousel { padding: 36px 3% 24px; }
 .atlas-recommendation-list .atlas-mini-course { flex: 0 0 224px; min-width: 0; scroll-snap-align: start; }
@@ -843,7 +843,11 @@
   overflow-x: auto;
   scroll-snap-type: x proximity;
   overscroll-behavior-x: contain;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+.atlas-recommendation-list::-webkit-scrollbar,
+.atlas-course-track::-webkit-scrollbar {
+  display: none;
 }
 .atlas-course-marquee .atlas-course-card {
   flex: 0 0 260px;
