@@ -667,11 +667,18 @@
   font-weight: 700;
 }
 .atlas-recommendation-list {
-  padding: 36px 3%;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 22px;
+  padding: 0 0 8px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
+.atlas-recommendation-carousel { padding: 36px 3% 24px; }
+.atlas-recommendation-list .atlas-mini-course { flex: 0 0 224px; min-width: 0; scroll-snap-align: start; }
+.atlas-recommendation-list .atlas-mini-thumb { width: 100%; padding-top: 0; }
 .atlas-mini-thumb {
   position: relative;
   width: 90%;
@@ -827,15 +834,29 @@
   overflow: visible;
 }
 .atlas-course-track {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
   gap: 20px;
   align-items: stretch;
   width: 100%;
+  padding-bottom: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
 .atlas-course-marquee .atlas-course-card {
-  width: 100%;
+  flex: 0 0 260px;
+  width: 260px;
+  scroll-snap-align: start;
 }
+.atlas-course-carousel { min-width: 0; }
+.atlas-course-carousel [role="region"]:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+.atlas-course-carousel-controls { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.atlas-course-carousel-controls button { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: var(--blue); cursor: pointer; transition: background .18s, border-color .18s; }
+.atlas-course-carousel-controls button:hover:not(:disabled) { background: #eef3fb; border-color: var(--blue); }
+.atlas-course-carousel-controls button:disabled { opacity: .4; cursor: not-allowed; }
+.atlas-course-carousel-controls button:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 .course-marquee {
   overflow-x: auto;
   scrollbar-width: none;
@@ -1574,10 +1595,6 @@
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
-  .atlas-recommendation-list {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    padding: 25px;
-  }
   .atlas-section {
     padding: 40px 25px;
   }
@@ -1593,9 +1610,6 @@
   }
   .atlas-benefit-grid article:nth-child(4) {
     border-bottom: 1px solid var(--line);
-  }
-  .atlas-course-marquee .atlas-course-card {
-    width: 100%;
   }
   .course-marquee-item {
     width: 260px;
@@ -3021,13 +3035,17 @@
 @media (prefers-reduced-motion: reduce) {
   .toast { animation: none; }
 }
-/* Managed homepage courses wrap so every added course remains visible. */
-.atlas-recommendation-list { display:grid !important; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:18px; padding:36px 3%; overflow:visible; }
-.atlas-recommendation-list .atlas-mini-course { min-width:0; }
+/* Every configured card remains available in the swipeable homepage rows. */
 .atlas-content-loading .atlas-recommendation-list,
 .atlas-content-loading .atlas-course-marquee,
 .atlas-content-loading .atlas-skill-grid { visibility:hidden; }
 .atlas-mini-thumb-placeholder { width:100%; height:100%; border-radius:4px; background:linear-gradient(135deg,#dce8f7 0%,#eef3fb 48%,#cbd9ef 100%); }
 .atlas-mini-thumb { position:relative; overflow:hidden; }
 .atlas-mini-thumb img { width:100%; height:100%; object-fit:cover; display:block; border-radius:4px; }
-@media (max-width:760px) { .atlas-recommendation-list { grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); padding:24px; } }
+@media (max-width:760px) {
+  .atlas-recommendation-carousel { padding:24px; }
+  .atlas-recommendation-list { padding:0 0 8px; }
+  .atlas-recommendation-list .atlas-mini-course { flex-basis:190px; }
+  .atlas-course-marquee .atlas-course-card { width:min(300px,82vw); flex-basis:min(300px,82vw); }
+}
+@media (prefers-reduced-motion:reduce) { .atlas-course-carousel-controls button { transition:none; } }

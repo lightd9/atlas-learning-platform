@@ -16,7 +16,7 @@ This is the product and implementation checklist for homepage course management.
 - Unlock something new
 - Explore catalogue
 
-Recommended supports 8 active visible courses and Unlock supports 12. Discover top courses and Explore are unlimited. These limits are shared by placement validation and public serialization. All configured cards wrap into responsive rows.
+Recommended supports 8 active visible courses and Unlock supports 12. Discover top courses and Explore are unlimited. These limits are shared by placement validation and public serialization. Recommended and Discover each use one horizontally scrollable row, with touch swiping and previous/next controls. All configured cards remain reachable. Unlock and Explore use responsive grids.
 
 ## Public visibility
 

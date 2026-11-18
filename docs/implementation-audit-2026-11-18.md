@@ -2,13 +2,15 @@
 
 The seven requested areas were reviewed against the current implementation. Existing worktree changes were preserved, and remaining access, invitation, homepage, and progress gaps were corrected.
 
+The subsequent layout changes and video-seeking explanation are recorded in the [UI follow-up](ui-follow-up-2026-11-18.md).
+
 | Request | Result |
 | --- | --- |
 | Invitation expiry | New and resent invitations default to 30 days, configurable through `INVITATION_TTL_DAYS`. Email wording follows the configuration. Existing links retain their stored expiry dates. |
 | Bulk resend and row actions | Resend all and Resend selected are available above the invitation tables. Row actions use an accessible dropdown. Server permissions, school boundaries, cooldowns, token rotation, audit logs, and partial delivery summaries were verified. |
 | Admin course layout | The admin overview uses a responsive grid with pagination. All 18 published courses in the verification dataset were accessible. Instructor ownership and workspace navigation remain enforced. |
 | Parent courses for staff | Teachers and headteachers can access published staff and parent courses. Parents can access only parent courses. School restrictions apply to both audiences. |
-| Parent registration image | Registration uses its dedicated SVG placeholder; the shared login image is preserved. The final photo awaits the user's choice. |
+| Parent registration image | Registration now uses a dedicated optimized family photograph, added in the UI follow-up. The shared login image is preserved. |
 | Watched-only seeking | Learners can revisit watched portions; forward jumps into unwatched portions are blocked. Editor and school preview players retain unrestricted seeking. The server validates duration, credit growth, ranges, and resume position. |
 | Homepage content | Published courses from both audiences can be placed on the public homepage. Configured cards render responsively, and archived/deleted courses are removed from content management as well as the public homepage. |
 

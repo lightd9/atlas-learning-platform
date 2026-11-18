@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Mail, UsersRound, RefreshCw, Trash2, CheckCircle2 } from 'lucide-react'
+import { Mail, UsersRound, RefreshCw, Trash2, CheckCircle2, Search } from 'lucide-react'
 import AdminShell from '@/components/AdminShell'
 import SetupLinkCard from '@/components/SetupLinkCard'
 import SetPasswordModal from '@/components/SetPasswordModal'
@@ -35,10 +35,13 @@ export default function AdminInvitationsPage() {
   const [resendLinks, setResendLinks] = useState<SetupLink[]>([])
   const [busy, setBusy] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [search, setSearch] = useState('')
   const { resend: bulkResend, busy: bulkBusy, results: bulkResults } = useInvitationResend()
   const [acceptTarget, setAcceptTarget] = useState<AdminInvitation | null>(null)
   const [acceptBusy, setAcceptBusy] = useState(false)
   const [acceptError, setAcceptError] = useState('')
+  const userId = session?.user?.id
+  const userRole = session?.user?.role
 
   async function load() {
     try {
@@ -53,19 +56,23 @@ export default function AdminInvitationsPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
-    if (status === 'authenticated' && session?.user?.role !== 'ATLAS_ADMIN') { router.push('/dashboard'); return }
+    if (status === 'authenticated' && userRole !== 'ATLAS_ADMIN') { router.push('/dashboard'); return }
     if (status === 'authenticated') load()
-  }, [status, session, router])
+  }, [status, userId, userRole, router])
 
   const resendableInvitations = invitations.filter((inv) => inv.status === 'PENDING' || inv.status === 'EXPIRED')
-  const allSelected = resendableInvitations.length > 0 && resendableInvitations.every((inv) => selectedIds.includes(inv.id))
+  const query = search.trim().toLowerCase()
+  const visibleInvitations = invitations.filter(inv => !query || [inv.name, inv.email, inv.schoolName, inv.invitedBy, formatRole(inv.role), inv.status].some(value => value?.toLowerCase().includes(query)))
+  const visibleResendableInvitations = visibleInvitations.filter(inv => inv.status === 'PENDING' || inv.status === 'EXPIRED')
+  const allSelected = visibleResendableInvitations.length > 0 && visibleResendableInvitations.every((inv) => selectedIds.includes(inv.id))
 
   function toggleSelection(id: string) {
     setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
   }
 
   function toggleSelectAll() {
-    setSelectedIds(allSelected ? [] : resendableInvitations.map((inv) => inv.id))
+    const visibleIds = new Set(visibleResendableInvitations.map(inv => inv.id))
+    setSelectedIds(current => allSelected ? current.filter(id => !visibleIds.has(id)) : [...new Set([...current, ...visibleIds])])
   }
 
   async function resendSelected(ids = selectedIds) {
@@ -139,9 +146,17 @@ export default function AdminInvitationsPage() {
         </div>
       </div>
 
+      <div className="pending-invitation-search">
+        <div>
+          <label htmlFor="invitation-search">Search invitations</label>
+          <div className="pending-invitation-search-input"><Search size={17} aria-hidden="true" /><input id="invitation-search" type="search" placeholder="Name, email, school or role" value={search} onChange={event => setSearch(event.target.value)} /></div>
+        </div>
+        <p className="muted" role="status">{loading ? 'Loading invitations…' : `${visibleInvitations.length} of ${invitations.length} invitations`}</p>
+      </div>
+
       <div className="invitation-resend-toolbar">
-        <button type="button" className="secondary-button" onClick={toggleSelectAll} disabled={busy || bulkBusy || resendableInvitations.length === 0}>
-          {allSelected ? 'Deselect all' : 'Select all resendable'}
+        <button type="button" className="secondary-button" onClick={toggleSelectAll} disabled={busy || bulkBusy || visibleResendableInvitations.length === 0}>
+          {allSelected ? 'Deselect displayed' : query ? 'Select all displayed' : 'Select all resendable'}
         </button>
         <span className="muted" style={{ fontSize: 13 }}>{selectedIds.length} selected</span>
         <button type="button" className="secondary-button" onClick={() => resendSelected(resendableInvitations.map((inv) => inv.id))} disabled={busy || bulkBusy || resendableInvitations.length === 0}><RefreshCw size={16} /> Resend all pending ({resendableInvitations.length})</button>
@@ -164,7 +179,7 @@ export default function AdminInvitationsPage() {
         </div>
       )}
 
-      <div className="panel" style={{ overflow: 'hidden', padding: 0 }}>
+      <div className="panel pending-invitations-panel" style={{ overflow: 'hidden', padding: 0 }}>
         {acceptTarget && <SetPasswordModal
           title="Accept invitation & set password"
           subject={acceptTarget.name}
@@ -182,16 +197,17 @@ export default function AdminInvitationsPage() {
             <h3>No pending invitations</h3>
             <p className="muted" style={{ margin: 0 }}>Everyone invited to Atlas has responded.</p>
           </div>
+        ) : visibleInvitations.length === 0 ? (
+          <div className="pending-invitation-empty"><h3>No invitations match your search</h3><p className="muted">Try another name, email, school or role.</p><button type="button" className="secondary-button" onClick={() => setSearch('')}>Clear search</button></div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table className="admin-table">
+            <table className="admin-table pending-invitation-table">
+              <colgroup><col className="invitation-select-column" /><col /><col className="invitation-role-column" /><col className="invitation-inviter-column" /><col className="invitation-status-column" /><col className="invitation-expires-column" /><col className="invitation-actions-column" /></colgroup>
               <thead>
                 <tr>
-                  <th><span className="sr-only">Select</span></th>
-                  <th>Name</th>
-                  <th>Email</th>
+                  <th scope="col" aria-label="Select invitations" />
+                  <th>Name &amp; email</th>
                   <th>Role</th>
-                  <th>School</th>
                   <th>Invited by</th>
                   <th>Status</th>
                   <th>Expires</th>
@@ -199,7 +215,7 @@ export default function AdminInvitationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {invitations.map((inv) => (
+                {visibleInvitations.map((inv) => (
                   <tr key={inv.id}>
                     <td>{(inv.status === 'PENDING' || inv.status === 'EXPIRED') && (
                       <input
@@ -210,10 +226,8 @@ export default function AdminInvitationsPage() {
                         onChange={() => toggleSelection(inv.id)}
                       />
                     )}</td>
-                    <td><strong>{inv.name}</strong></td>
-                    <td style={{ color: 'var(--muted)' }}>{inv.email}</td>
+                    <td><strong>{inv.name}</strong><span className="pending-invitation-email">{inv.email}</span></td>
                     <td><span className={`badge ${roleBadge(inv.role)}`}>{formatRole(inv.role)}</span></td>
-                    <td>{inv.schoolName || '—'}</td>
                     <td>{inv.invitedBy}</td>
                     <td><span className={`badge ${invitationStatusBadge(inv.status)}`}>{inv.status}</span></td>
                     <td>{inv.status === 'REVOKED' ? '—' : new Date(inv.expiresAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
@@ -261,8 +275,4 @@ function invitationStatusBadge(status: string) {
     case 'REVOKED': return 'badge-inactive'
     default: return ''
   }
-}
-
-const selectStyle: React.CSSProperties = {
-  height: 40, borderRadius: 8, border: '1px solid var(--line)', padding: '0 12px', fontSize: 13, background: '#fff', minWidth: 140,
 }

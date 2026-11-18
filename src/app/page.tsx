@@ -21,6 +21,7 @@ import PublicFooter from "@/components/PublicFooter";
 import PublicNavbar from "@/components/PublicNavbar";
 import { publicCourseFromPlacement, type PublicCourse, type PublicHomeCourse } from "@/data/publicCourses";
 import CourseCoverImage from "@/components/CourseCoverImage";
+import HorizontalCourseList from "@/components/HorizontalCourseList";
 
 /* Restore the first slide by uncommenting the block below and removing the current first slide */
 const slides = [
@@ -295,11 +296,11 @@ export default function HomePage() {
             </p>
             <Link href="#courses">View pathway</Link>
           </div>
-          <div className="atlas-recommendation-list">
+          <HorizontalCourseList className="atlas-recommendation-carousel" trackClassName="atlas-recommendation-list" label="Recommended courses" resetKey={managedRecommendations.map(course => course.id).join(',')}>
             {managedRecommendations.map(({ id, title, category, image }) => (
               <article className="atlas-mini-course" key={id}>
                 <div className="atlas-mini-thumb">
-                  <CourseCoverImage courseId={id} coverImageUrl={image} sizes="110px" />
+                  <CourseCoverImage courseId={id} coverImageUrl={image} sizes="224px" />
                 </div>
                 <div>
                   <span>{category}</span>
@@ -308,7 +309,7 @@ export default function HomePage() {
               </article>
             ))}
             {homeContentReady && !homeContentError && managedRecommendations.length === 0 && <p className="atlas-empty-courses">New courses are coming soon.</p>}
-          </div>
+          </HorizontalCourseList>
         </section>
 
         <section
@@ -359,8 +360,7 @@ export default function HomePage() {
               </button>
             ))}
           </div>
-          <div className="atlas-course-marquee">
-            <div className="atlas-course-track">
+          <HorizontalCourseList className="atlas-course-marquee" trackClassName="atlas-course-track" label="Top courses" resetKey={`${activeCategory}-${categoryCourses.map(course => course.id).join(',')}`}>
               {categoryCourses.map((course, index) => (
                 <article className="atlas-course-card" key={course.id}>
                   <div className="atlas-course-image">
@@ -404,9 +404,8 @@ export default function HomePage() {
                   </div>
                 </article>
               ))}
-            </div>
             {homeContentReady && !homeContentError && categoryCourses.length === 0 && <p className="atlas-empty-courses">New courses are coming soon.</p>}
-          </div>
+          </HorizontalCourseList>
         </section>
 
         <section
