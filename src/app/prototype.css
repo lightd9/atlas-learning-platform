@@ -328,7 +328,7 @@ p[style*="#ecfdf3"] a { color:#fff; }
 /* Parent/carer registration photograph */
 .register-page{background:#fbf7f3}
 .register-page .login-layout{min-height:650px;border:1px solid #eadfd5;border-radius:28px;box-shadow:0 28px 80px rgba(87,54,28,.13)}
-.register-page .login-visual{background-image:url('/parent-registration.webp');background-size:cover;background-position:center 42%;border-radius:0}
+.register-page .login-visual{background-image:url('/photo_2026-11-18_11-23-07.jpg');background-size:cover;background-position:40% 42%;border-radius:0}
 .register-page .login-visual:before{background:linear-gradient(180deg,rgba(22,31,43,.45) 0%,rgba(22,31,43,.12) 38%,rgba(28,24,19,.85) 100%)}
 .register-page .login-visual-overlay{display:none}
 .register-page .login-visual-brand{top:24px;left:24px;color:#fff;text-shadow:0 1px 12px rgba(0,0,0,.35)}

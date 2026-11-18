@@ -8,7 +8,7 @@ Recommended for you and Discover top courses each use one horizontally scrollabl
 
 Pending invitations have a labeled search field for names, email addresses, schools, roles, inviters, and status. The table groups names and emails, removes the School column, and wraps long text to fit desktop windows. Phone table scrolling stays within the panel. Select all displayed affects the filtered resendable rows and preserves existing selections; Resend all pending keeps its platform-wide scope. Row actions retain their accessible dropdown.
 
-Parent registration uses a local family photograph and no graduation mark. The WebP is 1600 × 1067 pixels and 196,714 bytes, with responsive cropping and an overlay for readable copy. The shared login image is unchanged.
+Parent registration uses the supplied photograph of a parent and child learning together, with no graduation mark. The image has responsive cropping and an overlay for readable copy. The shared login image is unchanged.
 
 ## Video seeking protection
 
@@ -22,9 +22,10 @@ These checks measure playback coverage.
 
 ## Photograph source
 
-- [Original family photograph on Unsplash's image service](https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=max&w=1600&q=85)
+- Current registration image, supplied by the user: `public/photo_2026-11-18_11-23-07.jpg`.
+- [Previously used family photograph on Unsplash's image service](https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=max&w=1600&q=85)
 - [Unsplash license](https://unsplash.com/license)
-- Repository asset: `public/parent-registration.webp`
+- Previous repository asset: `public/parent-registration.webp`.
 
 ## Validation
 
@@ -34,7 +35,7 @@ These checks measure playback coverage.
 - Desktop overview and invitation layouts passed at widths of 820, 960, 1024, 1280, 1440, and 1920 pixels. Loading additional courses preserved the existing cards. Three tab-refocus cycles refreshed the session six times with no repeat course requests and no empty course frames.
 - Invitation search, empty-result recovery, filtered selection, and keyboard dropdown controls passed. Phone scrolling stayed inside the invitation panel.
 - The real Neon homepage rendered all five recommended and seven top courses in single rows on desktop, phone, and landscape layouts. The final cards were reachable through controls; native touch events scrolled both rows. Keyboard browsing, category resets, preserved hero-rerender position, and reduced-motion controls passed.
-- Parent registration passed at desktop, tablet, and phone sizes with the WebP loaded, readable copy, and no graduation mark.
+- Parent registration passed at desktop, tablet, and phone sizes with the selected registration photo loaded, readable copy, and no graduation mark.
 - The checked pages reported no browser JavaScript errors or page-width overflow.
 
 Browser checks used Edge. Admin and registration API responses were mocked; the public homepage used read-only Neon data. No real invitations were sent or accounts created. The build retained existing CSS alignment and ESLint plugin-configuration notices.
